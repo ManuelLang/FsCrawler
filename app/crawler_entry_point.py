@@ -1,0 +1,53 @@
+from crawler.file_system_crawler import FileSystemCrawler
+from filters.path_pattern_filter import PatternFilter
+
+
+def main():
+    crawler = FileSystemCrawler(roots=['~/Projects'])
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".AppleDouble"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".LSOverride"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".idea/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".Trashes"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="out/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".idea_modules/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="build/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="dist/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="lib/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="venv/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".pyenv/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="bin/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".git"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="@angular*"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="node_modules/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="botocore/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="boto3/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="*.jar"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="*.war"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".terraform/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="package/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="*.class"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="target/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="__pycache__"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="*.pyc"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="mypy_boto3_builder/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".gradle/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".mvn/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="*.db"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="*.dat"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="*.bak"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="*.log"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".npm/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".nvm/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".npm-packages/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".m2/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".plugins/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".cache/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern=".docker/"))
+    crawler.add_filter(PatternFilter(excluded_path_pattern="dockervolumes/"))
+
+    crawler.start()
+
+
+if __name__ == '__main__':
+    main()

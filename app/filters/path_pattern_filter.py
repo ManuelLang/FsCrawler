@@ -1,5 +1,6 @@
-import re
 from pathlib import Path
+
+from loguru import logger
 
 from app.filters.filter import Filter
 from app.interfaces.iCrawler import ICrawler
@@ -7,26 +8,26 @@ from app.interfaces.iCrawler import ICrawler
 
 class PatternFilter(Filter):
 
-    def __init__(self, authorized_path_pattern: str = '', excluded_path_pattern: str = '',
-                 regex_flags: int = re.IGNORECASE) -> None:
+    def __init__(self, authorized_path_pattern: str = '', excluded_path_pattern: str = '') -> None:
         super().__init__()
         self.authorized_path_pattern = authorized_path_pattern
         self.excluded_path_pattern = excluded_path_pattern
-        self.regex_flags = regex_flags
 
     def authorize(self, crawler: ICrawler, path: Path) -> bool:
         """
         :return:
         """
         if not self.can_process(crawler, path):
-            return True
+            return False
 
         if self.excluded_path_pattern:
             if path.match(self.excluded_path_pattern):
+                logger.debug(f"Skipping path {path}: excluded by pattern {self.excluded_path_pattern}")
                 return False
 
         if self.authorized_path_pattern:
             if not path.match(self.authorized_path_pattern):
+                logger.debug(f"Skipping path {path}: not allowed by pattern {self.authorized_path_pattern}")
                 return False
 
         return True
@@ -36,8 +37,7 @@ class PatternFilter(Filter):
         json_dict.update({
             "filter": self.__class__.__name__,
             "authorized_path_pattern": self.authorized_path_pattern,
-            "excluded_path_pattern": self.excluded_path_pattern,
-            "regex_flags": self.regex_flags
+            "excluded_path_pattern": self.excluded_path_pattern
         })
         return json_dict
 
@@ -45,8 +45,7 @@ class PatternFilter(Filter):
         if o is None or o.__class__.__name__ != PatternFilter.__name__ or not isinstance(o, PatternFilter):
             return False
         return self.authorized_path_pattern == o.authorized_path_pattern \
-               and self.excluded_path_pattern == o.excluded_path_pattern \
-               and self.regex_flags == o.regex_flags
+               and self.excluded_path_pattern == o.excluded_path_pattern
 
     def __ne__(self, o: object) -> bool:
         return not self.__eq__(o)

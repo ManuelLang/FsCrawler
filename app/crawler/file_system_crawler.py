@@ -1,12 +1,14 @@
-from datetime import time
+import time
+from pathlib import Path
 from typing import List
+
 from loguru import logger
 
 from app.crawler.events.crawlStartingEvent import CrawlStartingEvent
 from app.interfaces.iCrawler import ICrawler
 from app.interfaces.iCrawlerObserver import ICrawlerObserver
 from app.interfaces.iFilter import IFilter
-from pathlib import Path
+from helpers.filesite_helper import *
 
 
 class FileSystemCrawler(ICrawler):
@@ -19,6 +21,7 @@ class FileSystemCrawler(ICrawler):
         self.processed_paths: List[str] = []
         self._require_stop = False
         self.paths_to_scan: List[Path] = []
+        self.crawled_files_size = 0
 
     def add_filter(self, path_filter: IFilter):
         if not path_filter:
@@ -41,10 +44,15 @@ class FileSystemCrawler(ICrawler):
         return self.observers
 
     def _add_path(self, path: Path) -> bool:
+        path = path.expanduser().resolve(strict=True)
+        str_path = str(path)
+
         # check if path is not added, or is not a sub-path
-        str_path = str(path.resolve())
+        if not path.is_dir():
+            raise ValueError(f"The path '{str_path}' is not a directory")
+
         for pts in self.paths_to_scan:
-            if str_path.startswith(str(pts.resolve())):
+            if str_path.startswith(str(pts)):
                 return False
         for pp in self.processed_paths:
             if str_path.startswith(pp):
@@ -67,6 +75,7 @@ class FileSystemCrawler(ICrawler):
 
     def start(self):
         logger.info("Scanning is starting...")
+        start_time = time.time()
         if not self.roots:
             logger.warning("No root location found to be crawled!")
             return
@@ -77,25 +86,33 @@ class FileSystemCrawler(ICrawler):
 
         # check the root paths
         for root in self.roots:
-            d = Path(root)
-            if not d.exists():
-                raise ValueError(f"The path '{root}' does not exists")
-            if not d.is_dir():
-                raise ValueError(f"The path '{root}' is not a directory")
-            if not self._add_path(d):
-                logger.warning(f"Not adding path '{d.resolve()}'")
+            if not self._add_path(Path(root)):
+                logger.warning(f"Not adding path '{root}'")
 
         for path in self.paths_to_scan:
             self.crawl_path(path)
 
+        end_time = time.time()
+        logger.info(f"Crawled {len(self.processed_paths)} files (total of {self.crawled_files_size:0.2f} Gb) in "
+                    f"{end_time - start_time:0.4f} sec")
+
     def crawl_path(self, path):
-        for entry in path.iterdir():
+        for entry in sorted(path.iterdir()):
+            entry = entry.expanduser().resolve()
+            if not entry.exists():
+                continue
+
+            entry_str = str(entry)
+            if self._require_stop:
+                return
+
+            self.processed_paths.append(entry_str)
+            self.crawled_files_size += convert_size_to_gb(entry.lstat().st_size)
+
+            if any(not f.authorize(crawler=self, path=entry) for f in self.filters):
+                continue
+
             if entry.is_file():
-                logger.info(entry.resolve())
+                logger.info(entry_str)
             else:
                 self.crawl_path(entry)
-
-
-if __name__ == '__main__':
-    crawler = FileSystemCrawler(roots=['/Users/langm27/Downloads/2021-07-11_Mac_book_Downloads_A_trier/Bail Yoan DUONG'])
-    crawler.start()

@@ -1,8 +1,10 @@
 from pathlib import Path
 
+from loguru import logger
+
 from app.helpers.serializationHelper import JsonDumper
-from app.interfaces.iAccountCrawler import IAccountCrawler
 from app.interfaces.iFilter import IFilter
+from interfaces.iCrawler import ICrawler
 
 
 class Filter(IFilter):
@@ -14,10 +16,13 @@ class Filter(IFilter):
                 hasattr(subclass, 'authorize') and
                 callable(subclass.authorize))
 
-    def can_process(self, crawler: IAccountCrawler, path: Path) -> bool:
-        return True if path and path.exists() else False
+    def can_process(self, crawler: ICrawler, path: Path) -> bool:
+        can_process = True if path and path.exists() else False
+        if not can_process:
+            logger.info(f"Not a valid path: {path}")
+        return can_process
 
-    def authorize(self, crawler: IAccountCrawler, path: Path) -> bool:
+    def authorize(self, crawler: ICrawler, path: Path) -> bool:
         return self.can_process(crawler, path)
 
     def to_json(self) -> dict:
