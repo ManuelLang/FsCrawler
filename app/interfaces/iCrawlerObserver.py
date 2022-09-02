@@ -1,6 +1,9 @@
 from abc import ABC
 
-from app.crawler.events.crawlStartingEvent import CrawlStartingEvent
+from crawler.events.crawlErrorEventArgs import CrawlErrorEventArgs
+from crawler.events.crawlProgressEventArgs import CrawlProgessEventArgs
+from crawler.events.crawlStatusEventArgs import CrawlStatusEventArgs
+from crawler.events.pathEventArgs import PathEventArgs
 
 
 class ICrawlerObserver(ABC):
@@ -12,32 +15,32 @@ class ICrawlerObserver(ABC):
                 hasattr(subclass, 'authorize') and
                 callable(subclass.authorize))
 
-    def crawl_starting(self, scan_event: CrawlStartingEvent):
+    def crawl_starting(self, scan_event: CrawlStatusEventArgs):
         pass
 
-    def path_found(self, scan_event: CrawlStartingEvent):
+    def path_found(self, scan_event: PathEventArgs):
         pass
 
-    def path_skipped(self, scan_event: CrawlStartingEvent):
+    def path_skipped(self, scan_event: PathEventArgs):
         pass
 
-    def processing_file(self, scan_event: CrawlStartingEvent):
+    def processing_file(self, scan_event: PathEventArgs):
         pass
 
-    def processing_directory(self, scan_event: CrawlStartingEvent):
+    def processing_directory(self, scan_event: PathEventArgs):
         pass
 
-    def path_processed(self, scan_event: CrawlStartingEvent):
+    def path_processed(self, scan_event: PathEventArgs):
         pass
 
-    def crawl_progress(self, scan_event: CrawlStartingEvent):
+    def crawl_progress(self, scan_event: CrawlProgessEventArgs):
         pass
 
-    def crawl_error(self, scan_event: CrawlStartingEvent):
+    def crawl_error(self, scan_event: CrawlErrorEventArgs):
         pass
 
-    def crawl_stopped(self, scan_event: CrawlStartingEvent):
+    def crawl_stopped(self, scan_event: CrawlStatusEventArgs):
         pass
 
-    def crawl_completed(self, scan_event: CrawlStartingEvent):
+    def crawl_completed(self, scan_event: CrawlStatusEventArgs):
         pass

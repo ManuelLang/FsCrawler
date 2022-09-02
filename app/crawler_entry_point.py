@@ -1,5 +1,6 @@
 from crawler.file_system_crawler import FileSystemCrawler
 from filters.path_pattern_filter import PatternFilter
+from observers.logging_observer import LoggingObserver
 
 
 def main():
@@ -46,6 +47,7 @@ def main():
     crawler.add_filter(PatternFilter(excluded_path_pattern=".docker/"))
     crawler.add_filter(PatternFilter(excluded_path_pattern="dockervolumes/"))
 
+    crawler.add_observer(LoggingObserver())
     crawler.start()
 
 
