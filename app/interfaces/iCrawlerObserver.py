@@ -27,10 +27,13 @@ class ICrawlerObserver(ABC):
     def processing_file(self, scan_event: PathEventArgs):
         pass
 
+    def processed_file(self, scan_event: PathEventArgs):
+        pass
+
     def processing_directory(self, scan_event: PathEventArgs):
         pass
 
-    def path_processed(self, scan_event: PathEventArgs):
+    def processed_directory(self, scan_event: PathEventArgs):
         pass
 
     def crawl_progress(self, scan_event: CrawlProgessEventArgs):

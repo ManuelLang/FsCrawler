@@ -4,7 +4,7 @@ from observers.logging_observer import LoggingObserver
 
 
 def main():
-    crawler = FileSystemCrawler(roots=['~/Projects'])
+    crawler = FileSystemCrawler(roots=['~/PERSONAL/'])
     crawler.add_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
     crawler.add_filter(PatternFilter(excluded_path_pattern=".AppleDouble"))
     crawler.add_filter(PatternFilter(excluded_path_pattern=".LSOverride"))
