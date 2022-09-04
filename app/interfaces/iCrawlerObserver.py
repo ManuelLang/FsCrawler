@@ -3,6 +3,7 @@ from abc import ABC
 from crawler.events.crawlErrorEventArgs import CrawlErrorEventArgs
 from crawler.events.crawlProgressEventArgs import CrawlProgessEventArgs
 from crawler.events.crawlStatusEventArgs import CrawlStatusEventArgs
+from crawler.events.directoryProcessedEventArgs import DirectoryProcessedEventArgs
 from crawler.events.pathEventArgs import PathEventArgs
 
 
@@ -33,7 +34,7 @@ class ICrawlerObserver(ABC):
     def processing_directory(self, scan_event: PathEventArgs):
         pass
 
-    def processed_directory(self, scan_event: PathEventArgs):
+    def processed_directory(self, scan_event: DirectoryProcessedEventArgs):
         pass
 
     def crawl_progress(self, scan_event: CrawlProgessEventArgs):
