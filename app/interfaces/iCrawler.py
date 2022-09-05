@@ -31,7 +31,14 @@ class ICrawler(ABC):
                 hasattr(subclass, 'end_time') and
                 callable(subclass.end_time) and
                 hasattr(subclass, 'crawl_in_progress') and
-                callable(subclass.crawl_in_progress))
+                callable(subclass.crawl_in_progress) and
+                hasattr(subclass, 'processed_files_size') and
+                callable(subclass.processed_files_size) and
+                hasattr(subclass, 'nb_files_skipped') and
+                callable(subclass.nb_files_skipped) and
+                hasattr(subclass, 'nb_directories_skipped') and
+                callable(subclass.nb_directories_skipped)
+                )
 
     @property
     def observers(self) -> List[object]:
@@ -67,6 +74,18 @@ class ICrawler(ABC):
 
     @property
     def crawled_files_size(self) -> int:
+        raise NotImplementedError()
+
+    @property
+    def processed_files_size(self) -> int:
+        raise NotImplementedError()
+
+    @property
+    def nb_files_skipped(self) -> int:
+        raise NotImplementedError()
+
+    @property
+    def nb_directories_skipped(self) -> int:
         raise NotImplementedError()
 
     @property

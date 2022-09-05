@@ -16,35 +16,35 @@ class ICrawlerObserver(ABC):
                 hasattr(subclass, 'authorize') and
                 callable(subclass.authorize))
 
-    def crawl_starting(self, scan_event: CrawlStatusEventArgs):
+    def crawl_starting(self, crawl_event: CrawlStatusEventArgs):
         pass
 
-    def path_found(self, scan_event: PathEventArgs):
+    def path_found(self, crawl_event: PathEventArgs):
         pass
 
-    def path_skipped(self, scan_event: PathEventArgs):
+    def path_skipped(self, crawl_event: PathEventArgs):
         pass
 
-    def processing_file(self, scan_event: PathEventArgs):
+    def processing_file(self, crawl_event: PathEventArgs):
         pass
 
-    def processed_file(self, scan_event: PathEventArgs):
+    def processed_file(self, crawl_event: PathEventArgs):
         pass
 
-    def processing_directory(self, scan_event: PathEventArgs):
+    def processing_directory(self, crawl_event: PathEventArgs):
         pass
 
-    def processed_directory(self, scan_event: DirectoryProcessedEventArgs):
+    def processed_directory(self, crawl_event: DirectoryProcessedEventArgs):
         pass
 
-    def crawl_progress(self, scan_event: CrawlProgessEventArgs):
+    def crawl_progress(self, crawl_event: CrawlProgessEventArgs):
         pass
 
-    def crawl_error(self, scan_event: CrawlErrorEventArgs):
+    def crawl_error(self, crawl_event: CrawlErrorEventArgs):
         pass
 
-    def crawl_stopped(self, scan_event: CrawlStatusEventArgs):
+    def crawl_stopped(self, crawl_event: CrawlStatusEventArgs):
         pass
 
-    def crawl_completed(self, scan_event: CrawlStatusEventArgs):
+    def crawl_completed(self, crawl_event: CrawlStatusEventArgs):
         pass
