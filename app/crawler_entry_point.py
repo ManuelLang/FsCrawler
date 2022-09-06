@@ -1,6 +1,11 @@
+import threading
+import time
+from queue import Queue
+
 from crawler.file_system_crawler import FileSystemCrawler
+from crawling_queue_consumer import CrawlingQueueConsumer
 from filters.path_pattern_filter import PatternFilter
-from observers.logging_observer import LoggingObserver
+from observers.queue_observer import QueueObserver
 
 
 def main():
@@ -47,8 +52,22 @@ def main():
     crawler.add_filter(PatternFilter(excluded_path_pattern=".docker/"))
     crawler.add_filter(PatternFilter(excluded_path_pattern="dockervolumes/"))
 
-    crawler.add_observer(LoggingObserver())
-    crawler.start()
+    crawling_queue: Queue = Queue()
+    # crawler.add_observer(LoggingObserver())
+    crawler.add_observer(QueueObserver(crawling_queue=crawling_queue))
+
+    queue_consumer = CrawlingQueueConsumer(crawling_queue=crawling_queue)
+
+    producer_thread = threading.Thread(target=crawler.start, name="FileCrawler - producer")
+    consumer_thread = threading.Thread(target=queue_consumer.start, name="File consumer")
+
+    consumer_thread.start()
+    time.sleep(1)
+    producer_thread.start()
+
+    producer_thread.join()
+    queue_consumer.should_stop = True
+    consumer_thread.join()
 
 
 if __name__ == '__main__':

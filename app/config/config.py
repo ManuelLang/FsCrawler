@@ -3,12 +3,12 @@ import os
 import sys
 from typing import List
 from urllib.parse import quote
+
 from loguru import logger
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
 from app.helpers.logging import InterceptHandler
-
 
 VERSION = "0.0.1"
 
@@ -20,7 +20,7 @@ LOCAL_ENV = (ENVIRONMENT and ENVIRONMENT.lower() == 'local') \
             or os.getenv("LOCAL_ENV", "false").lower().strip() in [1, 'true', 'yes']
 config_file_name = f".env-{ENVIRONMENT}" if ENVIRONMENT else ".env"
 directory = os.getcwd()
-config_file_path = os.path.abspath(f"../../properties/{config_file_name}") \
+config_file_path = os.path.abspath(f"./properties/{config_file_name}") \
     if LOCAL_ENV else f"app/properties/{config_file_name}"
 if not os.path.exists(config_file_path):
     logger.error(f"Path does not exists: {config_file_path}")
@@ -42,13 +42,10 @@ DEBUG: bool = config("DEBUG", cast=bool, default=False)
 DATABASE_HOST: str = config("DATABASE_HOST",
                             default='localhost')
 DATABASE_PORT: str = config("DATABASE_PORT",
-                            default='33061')
+                            default='3306')
 DATABASE_USER: str = config("DATABASE_USER", default='admin')
 
-DATABASE_PASSWORD: str = config("DATABASE_PASSWORD", default='')
-DATABASE_PASSWORD_KEY_SSM: str = config("DATABASE_PASSWORD_KEY_SSM", default='')
-AWS_PROFILE: str = config('AWS_PROFILE', default='ssm_scanners_assumed')
-AWS_REGION: str = config('AWS_REGION', default='us-west-2')
+DATABASE_PASSWORD: str = config("DATABASE_PASSWORD", default='kaiser')
 
 if not DATABASE_PASSWORD:
     logger.warning('DB password not set!')
@@ -108,4 +105,4 @@ logging.getLogger('requests').setLevel(logging.INFO if DEBUG else logging.ERROR)
 logging.getLogger('urllib3').setLevel(logging.INFO if DEBUG else logging.ERROR)
 logging.getLogger('botocore').setLevel(logging.INFO if DEBUG else logging.WARNING)
 
-
+QUEUE_WAIT_TIME: int = config("QUEUE_WAIT_TIME", cast=int, default=10)
