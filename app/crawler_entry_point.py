@@ -66,7 +66,6 @@ def main():
     producer_thread.start()
 
     producer_thread.join()
-    queue_consumer.should_stop = True
     consumer_thread.join()
 
 
