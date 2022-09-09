@@ -3,11 +3,13 @@ from loguru import logger
 from crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
 from crawler.events.crawlErrorEventArgs import CrawlErrorEventArgs
 from crawler.events.crawlProgressEventArgs import CrawlProgessEventArgs
+from crawler.events.crawlStartingEventArgs import CrawlStartingEventArgs
 from crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
 from crawler.events.directoryCrawledEventArgs import DirectoryCrawledEventArgs
 from crawler.events.directoryFoundEventArgs import DirectoryFoundEventArgs
 from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
 from crawler.events.fileFoundEventArgs import FileFoundEventArgs
+from crawler.events.pathFoundEventArgs import PathFoundEventArgs
 from crawler.events.pathSkippedEventArgs import PathSkippedEventArgs
 from interfaces.iCrawlerObserver import ICrawlerObserver
 

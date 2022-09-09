@@ -1,24 +1,40 @@
 import time
 from queue import Queue
+from typing import List, Dict
 
 from loguru import logger
 
 from crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
 from crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
 from crawler.events.crawlerEventArgs import CrawlerEventArgs
+from crawler.events.directoryCrawledEventArgs import DirectoryCrawledEventArgs
 from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
+from crawler.events.pathEventArgs import PathEventArgs
 from interfaces.iCrawlingQueueConsumer import ICrawlingQueueConsumer
+from interfaces.iPathProcessor import IPathProcessor
+from models.directory import DirectoryModel
+from models.file import FileModel
+from models.path import PathModel
+from models.path_type import PathType
 
 
 class CrawlingQueueConsumer(ICrawlingQueueConsumer):
 
-    def __init__(self, crawling_queue: Queue) -> None:
+    def __init__(self, crawling_queue: Queue, path_processors: List[IPathProcessor] = []) -> None:
         super().__init__()
         if crawling_queue is None:
             raise ValueError("Please provide a Queue")
         self._crawling_queue = crawling_queue
+        self._in_progress: bool = False
         self._should_stop: bool = False
-        self.processed_files: int = 0
+        self._processed_files: List[FileModel] = []
+        self._processed_directories: List[DirectoryModel] = []
+        self._path_processors: List[IPathProcessor] = path_processors
+        self._errored_paths: Dict[str, str] = {}
+
+    @property
+    def processed_files(self) -> List[FileModel]:
+        return self._processed_files
 
     @property
     def should_stop(self) -> bool:
@@ -53,13 +69,19 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
                 item.should_stop = True
         return item
 
-    def _process_file(self, crawl_event: FileCrawledEventArgs):
-        if crawl_event.is_file is True:
-            logger.info(f"Saving file '{crawl_event.path}' into DB...")
-            self.processed_files += 1
-            # TODO: implement a file processor interface
+    def _process_path(self, crawl_event: PathEventArgs, path_model: PathModel):
+        logger.info(f"Processing {path_model.path_type.name} '{crawl_event.path}'...")
+        for processor in self._path_processors:
+            if processor.processor_type == path_model.path_type or processor.processor_type == PathType.ALL:
+                try:
+                    processor.process_path(crawl_event=crawl_event, path_model=path_model)
+                except Exception as ex:
+                    self._errored_paths[str(crawl_event.path)] = str(ex)
+                    logger.error(f"Unable to process {path_model.path_type} '{path_model}' "
+                                 f"({processor.__class__.__name__}): {ex}")
 
     def start(self):
+        self._in_progress = True
         while True:
             if self._should_stop:
                 break
@@ -71,6 +93,12 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
                 self._should_stop = True
                 break
             if isinstance(crawl_event, FileCrawledEventArgs):
-                self._process_file(crawl_event=crawl_event)
-
-        logger.info(f"Processed {self.processed_files} files")
+                file: FileModel = FileModel(path=crawl_event.path, size_in_mb=crawl_event.size_in_mb)
+                self._process_path(crawl_event=crawl_event, path_model=file)
+                self.processed_files.append(file)
+            elif isinstance(crawl_event, DirectoryCrawledEventArgs):
+                dir: DirectoryModel = DirectoryModel(path=crawl_event.path, size_in_mb=crawl_event.size_in_mb)
+                self._process_path(crawl_event=crawl_event, path_model=dir)
+                self._processed_directories.append(dir)
+        self._in_progress = False
+        logger.info(f"Processed {len(self.processed_files)} files")

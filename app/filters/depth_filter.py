@@ -22,7 +22,7 @@ class DepthFilter(Filter):
 
         depth = len(path.relative_to(self.root_dir_path).parts)
 
-        if depth > self.max_depth:
+        if self.max_depth > 0 and depth > self.max_depth:
             logger.debug(f"Skipping path {path}: above max allowed depth {self.max_depth} (current: {depth})")
             return False
         return True
