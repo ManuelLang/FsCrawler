@@ -10,7 +10,7 @@ from crawler.file_system_crawler import FileSystemCrawler
 from crawling_queue_consumer import CrawlingQueueConsumer
 from filters.path_pattern_filter import PatternFilter
 from interfaces.iPathProcessor import IPathProcessor
-from observers.queue_observer import QueueObserver
+from observers.metrics_observer import MetricsObserver
 from processors.extended_attributes_file_processor import ExtendedAttributesFileProcessor
 from processors.hash_file_processor import HashFileProcessor
 
@@ -19,7 +19,7 @@ drives = [dp.device for dp in drps if dp.fstype == 'NTFS']
 
 
 def main():
-    crawler = FileSystemCrawler(roots=['~/PERSONAL/Commandes & factures'])
+    crawler = FileSystemCrawler(roots=['~/Projects'])
     crawler.add_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
     crawler.add_filter(PatternFilter(excluded_path_pattern=".AppleDouble"))
     crawler.add_filter(PatternFilter(excluded_path_pattern=".LSOverride"))
@@ -64,7 +64,8 @@ def main():
 
     crawling_queue: Queue = Queue()
     # crawler.add_observer(LoggingObserver())
-    crawler.add_observer(QueueObserver(crawling_queue=crawling_queue))
+    crawler.add_observer(MetricsObserver())
+    # crawler.add_observer(QueueObserver(crawling_queue=crawling_queue))
 
     processors: List[IPathProcessor] = []
 
