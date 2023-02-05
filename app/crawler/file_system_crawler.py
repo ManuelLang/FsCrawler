@@ -46,6 +46,7 @@ class FileSystemCrawler(ICrawler):
         self._ignored_files: int = 0
         self._start_time: datetime = None
         self._end_time: datetime = None
+        self.duration = 0
 
     def add_filter(self, path_filter: IFilter):
         if not path_filter:
@@ -290,10 +291,10 @@ class FileSystemCrawler(ICrawler):
             self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex))
 
         self._end_time = datetime.now()
-        duration = self._end_time - self._start_time
+        self.duration = self._end_time - self._start_time
         nb_dir_skipped = len(self._paths_skipped) - self._ignored_files
         logger.info(f"Found {len(self._crawled_paths)} paths (total of {self._crawled_files_size:0.2f} Mb) "
-                    f"in {duration} sec\n"
+                    f"in {self.duration} sec\n"
                     f"\t- {len(self._directories_processed)} directories\n"
                     f"\t- {len(self._files_processed)} files processed (total of {self._processed_files_size:0.2f} Mb)\n"
                     f"\t- {self._ignored_files} ignored files, {nb_dir_skipped} "

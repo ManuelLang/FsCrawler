@@ -38,19 +38,19 @@ class MetricsObserver(ICrawlerObserver):
         return [e for e in sorted(list(set(self._crawled_extensions))) if e]
 
     @property
-    def deepest_paths(self, top_n: int = 10) -> Dict[int, str]:
+    def deepest_paths(self, top_n: int = 10) -> Dict[int, List[str]]:
         top_depth = OrderedDict(sorted(self._paths_depth.items(), reverse=True))
         result = dict(take(top_n, top_depth.items()))
         return result
 
     @property
-    def biggest_directories(self, top_n: int = 10) -> Dict[int, str]:
+    def biggest_directories(self, top_n: int = 10) -> Dict[int, List[str]]:
         top_size = OrderedDict(sorted(self._directories_sizes.items(), reverse=True))
         result = dict(take(top_n, top_size.items()))
         return result
 
     @property
-    def longest_paths(self, top_n: int = 10) -> Dict[int, str]:
+    def longest_paths(self, top_n: int = 10) -> Dict[int, List[str]]:
         top_length = OrderedDict(sorted(self._paths_length.items(), reverse=True))
         result = dict(take(top_n, top_length.items()))
         return result
@@ -63,10 +63,13 @@ class MetricsObserver(ICrawlerObserver):
         logger.success(f"Files extensions found ({len(self.extensions_found)}): {', '.join(self.extensions_found)}")
         logger.success(
             f"Files extensions crawled ({len(self.extensions_crawled)}): {', '.join(self.extensions_crawled)}")
-        logger.success(f"Total size of skipped files: {self.skipped_files_total_size}")
+        logger.success(f"Total size of skipped files: {self.skipped_files_total_size:.2f} Mb")
         logger.success("Deepest paths:")
-        for depth, path in self.deepest_paths.items():
-            logger.success(f"\tdepth: {depth}\t\t{path[0]} ({len(path)} files)")
+        for depth, path_list in self.deepest_paths.items():
+            logger.success(f"\ndepth: {depth} ({len(path_list)} items)")
+            logger.success(f"\n\texemple: {path_list[0]}")
+            # for path in path_list:
+            #     logger.success(f"\n\t{path}")
         logger.success("Biggest directories (in Mb):")
         for size, path in self.biggest_directories.items():
             logger.success(f"\t{size:.2f} Mb\t\t{path}")

@@ -1,3 +1,11 @@
 loguru
 pytz
+textract
+opencv-python
+pytesseract
+pdf2image
+tika
+PyPDF2
+PyMuPDF
+thumbnail
 

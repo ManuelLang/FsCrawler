@@ -22,17 +22,20 @@ class HashFileProcessor(IPathProcessor):
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
         logger.info(f"Hashing file: {path_model}")
-        with open(path_model.path, 'rb') as f:
-            while True:
-                data = f.read(BUF_SIZE)
-                if not data:
-                    break
-                for name, hash_algo in self._hash_algorithms.items():
-                    hash_algo.update(data)
-        for name, hash_algo in self._hash_algorithms.items():
-            property_name = f"hash_{name.lower()}"
-            if hasattr(path_model, property_name):
-                setattr(path_model, property_name, hash_algo.hexdigest())
-            else:
-                logger.error(f"Hash algorithm not supported: {name}")
-        logger.info(f"Done hashing file {path_model.path}")
+        try:
+            with open(path_model.path, 'rb') as f:
+                while True:
+                    data = f.read(BUF_SIZE)
+                    if not data:
+                        break
+                    for name, hash_algo in self._hash_algorithms.items():
+                        hash_algo.update(data)
+            for name, hash_algo in self._hash_algorithms.items():
+                property_name = f"hash_{name.lower()}"
+                if hasattr(path_model, property_name):
+                    setattr(path_model, property_name, hash_algo.hexdigest())
+                else:
+                    logger.error(f"Hash algorithm not supported: {name}")
+            logger.info(f"Done hashing file {path_model.path}")
+        except Exception as ex:
+            logger.error(f"Unable to hash file '{path_model.path}': {ex}")

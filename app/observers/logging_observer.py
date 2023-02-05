@@ -30,7 +30,7 @@ class LoggingObserver(ICrawlerObserver):
 
     def processed_file(self, crawl_event: FileCrawledEventArgs):
         super().processed_file(crawl_event)
-        logger.info(f"Found file {crawl_event.path}: {crawl_event.size_in_mb}")
+        logger.info(f"Found file {crawl_event.path}: {crawl_event.size_in_mb:0.2f} Mb")
 
     def processing_directory(self, crawl_event: DirectoryFoundEventArgs):
         super().processing_directory(crawl_event)
