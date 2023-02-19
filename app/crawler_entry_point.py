@@ -9,6 +9,7 @@ from loguru import logger
 
 from crawler.file_system_crawler import FileSystemCrawler
 from crawling_queue_consumer import CrawlingQueueConsumer
+from database.data_manager import AmiDataManager
 from filters.path_pattern_filter import PatternFilter
 from interfaces.iPathProcessor import IPathProcessor
 from observers.metrics_observer import MetricsObserver
@@ -21,7 +22,7 @@ drives = [dp.device for dp in drps if dp.fstype == 'NTFS']
 
 
 def main():
-    crawler = FileSystemCrawler(roots=['/Volumes/data-movies/The.Accountant.2016.FRENCH.BDRip.XviD-EXTREME'])
+    crawler = FileSystemCrawler(roots=['/Volumes/data-music/zz_recycle/Mc Solaar'])
     crawler.add_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
     crawler.add_filter(PatternFilter(excluded_path_pattern=".AppleDouble"))
     crawler.add_filter(PatternFilter(excluded_path_pattern=".LSOverride"))
@@ -74,10 +75,11 @@ def main():
 
     hash_algos = {}
     hash_algos['md5'] = hashlib.md5()
-    hash_algos['sha256'] = hashlib.sha256()
+    # hash_algos['sha256'] = hashlib.sha256()
     processors.append(HashFileProcessor(hash_algorithms=hash_algos))
     processors.append(ExtendedAttributesFileProcessor())
 
+    data_manager: AmiDataManager = AmiDataManager()
     queue_consumer = CrawlingQueueConsumer(crawling_queue=crawling_queue, path_processors=processors)
 
     producer_thread = threading.Thread(target=crawler.start, name="FileCrawler - producer")
@@ -93,8 +95,18 @@ def main():
     logger.info(f"Crawled {len(crawler.files_processed)} files (total of {crawler.crawled_files_size:0.2f} Mb) "
                 f"in {total_duration} sec")
     metricsObserver.print_statistics()
+
     logger.info(f"Saving now {len(queue_consumer.processed_files)} files into DB...")
-    # TODO: implement DB
+
+    for file in queue_consumer.processed_files:
+        data_manager.save_path(file)
+        logger.info(f"Saved file {file.path} into DB")
+    logger.info(f"Done saving files! {len(queue_consumer.processed_files)} files saved to DB")
+
+    for dir in queue_consumer.processed_directories:
+        data_manager.save_path(dir)
+        logger.info(f"Saved dir {dir.path} into DB")
+    logger.info(f"Done saving directories! {len(queue_consumer.processed_directories)} directories saved to DB")
 
 
 if __name__ == '__main__':

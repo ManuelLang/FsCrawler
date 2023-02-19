@@ -1,6 +1,7 @@
 import stat
 from stat import UF_HIDDEN, SF_ARCHIVED, UF_COMPRESSED
 
+import magic
 from loguru import logger
 
 from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
@@ -13,6 +14,7 @@ class ExtendedAttributesFileProcessor(IPathProcessor):
 
     def __init__(self) -> None:
         super().__init__()
+        self.mime = magic.Magic(mime=True, uncompress=True)
 
     @property
     def processor_type(self) -> PathType:
@@ -21,8 +23,10 @@ class ExtendedAttributesFileProcessor(IPathProcessor):
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
         logger.info(f"Fetching file's extended attributes: {path_model}")
         path_model.reserved = crawl_event.path.is_reserved()
-        lstat = crawl_event.path.lstat()
+        path_model.mime_type = self.mime.from_file(crawl_event.path)
+        path_model.content_family = PathModel.get_content_familiy_from_mime_type(mime_type=path_model.mime_type)
 
+        lstat = crawl_event.path.lstat()
         path_model.is_windows_path = True \
             if hasattr(lstat, 'st_file_attributes') and lstat.st_file_attributes is not None \
             else False

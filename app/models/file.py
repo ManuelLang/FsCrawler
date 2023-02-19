@@ -1,6 +1,6 @@
-import json
 from pathlib import Path
 
+from helpers.serializationHelper import JsonDumper
 from models.path import PathModel
 from models.path_type import PathType
 
@@ -17,9 +17,9 @@ class FileModel(PathModel):
         return PathType.FILE
 
     def to_json(self):
-        props = self.__dict__.copy()
+        props = super().to_json()
         props['path_type'] = self.path_type.name
         return props
 
     def __str__(self) -> str:
-        return json.dumps(self.to_json())
+        return JsonDumper.dumps(self)

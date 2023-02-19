@@ -37,6 +37,10 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         return self._processed_files
 
     @property
+    def processed_directories(self) -> List[DirectoryModel]:
+        return self._processed_directories
+
+    @property
     def should_stop(self) -> bool:
         return self._should_stop
 

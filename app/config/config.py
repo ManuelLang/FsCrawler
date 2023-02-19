@@ -40,17 +40,17 @@ ALLOWED_HOSTS: List[str] = config(
 DEBUG: bool = config("DEBUG", cast=bool, default=False)
 
 DATABASE_HOST: str = config("DATABASE_HOST",
-                            default='localhost')
+                            default='192.168.1.25')
 DATABASE_PORT: str = config("DATABASE_PORT",
                             default='3306')
 DATABASE_USER: str = config("DATABASE_USER", default='admin')
 
-DATABASE_PASSWORD: str = config("DATABASE_PASSWORD", default='kaiser')
+DATABASE_PASSWORD: str = config("DATABASE_PASSWORD", default='Welcome123!')
 
 if not DATABASE_PASSWORD:
     logger.warning('DB password not set!')
 
-DATABASE_NAME: str = config("DATABASE_NAME", default='cp')
+DATABASE_NAME: str = config("DATABASE_NAME", default='fs_crawler')
 
 DATABASE_URL: str = config("DB_CONNECTION", default='mysql+pymysql://{user}:{password}@{host}:{port}/{db}'
                            .format(user=quote(DATABASE_USER), password=DATABASE_PASSWORD, host=DATABASE_HOST,

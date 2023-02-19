@@ -8,4 +8,7 @@ tika
 PyPDF2
 PyMuPDF
 thumbnail
-
+mysql-connector-python
+mysqlclient
+pymysql
+python-magic

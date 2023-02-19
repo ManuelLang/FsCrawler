@@ -66,8 +66,7 @@ class MetricsObserver(ICrawlerObserver):
         logger.success(f"Total size of skipped files: {self.skipped_files_total_size:.2f} Mb")
         logger.success("Deepest paths:")
         for depth, path_list in self.deepest_paths.items():
-            logger.success(f"\ndepth: {depth} ({len(path_list)} items)")
-            logger.success(f"\n\texemple: {path_list[0]}")
+            logger.success(f"depth: {depth} ({len(path_list)} items)\n\texemple: {path_list[0]}")
             # for path in path_list:
             #     logger.success(f"\n\t{path}")
         logger.success("Biggest directories (in Mb):")
