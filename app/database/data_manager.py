@@ -1,3 +1,6 @@
+#  Copyright (c) 2023. Manuel LANG
+#  Software under GNU AGPLv3 licence
+
 import logging
 from contextlib import contextmanager
 
@@ -8,7 +11,7 @@ from config import config
 from models.path import PathModel
 
 
-class AmiDataManager:
+class PathDataManager:
 
     def __init__(self) -> None:
         super().__init__()
@@ -76,7 +79,7 @@ class AmiDataManager:
                       path_model.mime_type, str(path_model.path_type), str(path_model.path_stage))
             with self.cursor() as cur:
                 cur.execute(sql_statement, params)
-            logging.info(f"Saved path '{path_model.path}'")
+            logging.debug(f"Saved path '{path_model.path}'")
         except Exception as ex:
             logger.error(f"Unable to execute SQL command:\n{sql_statement}\nError: {ex}")
 

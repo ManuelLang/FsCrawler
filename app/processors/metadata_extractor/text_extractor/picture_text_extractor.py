@@ -1,3 +1,6 @@
+#  Copyright (c) 2023. Manuel LANG
+#  Software under GNU AGPLv3 licence
+
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List

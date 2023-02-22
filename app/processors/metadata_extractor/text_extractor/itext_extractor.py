@@ -1,3 +1,6 @@
+#  Copyright (c) 2023. Manuel LANG
+#  Software under GNU AGPLv3 licence
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, List

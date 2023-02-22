@@ -1,3 +1,6 @@
+#  Copyright (c) 2023. Manuel LANG
+#  Software under GNU AGPLv3 licence
+
 import os
 from pathlib import Path
 

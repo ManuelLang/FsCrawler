@@ -1,3 +1,6 @@
+#  Copyright (c) 2023. Manuel LANG
+#  Software under GNU AGPLv3 licence
+
 from app.helpers.serializationHelper import JsonDumper
 from app.interfaces.iCrawler import ICrawler
 

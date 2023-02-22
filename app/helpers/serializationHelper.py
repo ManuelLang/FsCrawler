@@ -1,7 +1,9 @@
+#  Copyright (c) 2023. Manuel LANG
+#  Software under GNU AGPLv3 licence
+
 import datetime as dt
 import json
 
-# from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from loguru import logger
 
 
@@ -23,22 +25,6 @@ class JsonDumper:
             return obj.replace(microsecond=0).isoformat().replace('+00:00', '')
         if isinstance(obj, dt.timedelta):
             return str(obj)
-        # if isinstance(obj.__class__, DeclarativeMeta):
-        #     # an SQLAlchemy class
-        #     fields = {}
-        #     for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
-        #         data = obj.__getattribute__(field)
-        #         if callable(data):
-        #             continue
-        #         if data is not None:
-        #             try:
-        #                 result = JsonDumper._dumper(data)
-        #                 fields[field] = result if result is not None else None
-        #             except TypeError:
-        #                 fields[field] = None
-        #         else:
-        #             fields[field] = None
-        #    return fields  # a json-encodable dict
         if isinstance(obj, object):
             try:
                 return obj.toJSON()

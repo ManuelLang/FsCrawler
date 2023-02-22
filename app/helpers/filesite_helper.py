@@ -1,3 +1,6 @@
+#  Copyright (c) 2023. Manuel LANG
+#  Software under GNU AGPLv3 licence
+
 KB = 1000
 MB = KB * 1000
 GB = MB * 1000

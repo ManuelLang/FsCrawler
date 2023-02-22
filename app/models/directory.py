@@ -1,3 +1,6 @@
+#  Copyright (c) 2023. Manuel LANG
+#  Software under GNU AGPLv3 licence
+
 from pathlib import Path
 
 from helpers.serializationHelper import JsonDumper
