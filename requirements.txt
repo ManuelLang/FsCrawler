@@ -12,3 +12,5 @@ mysql-connector-python
 mysqlclient
 pymysql
 python-magic
+starlette
+click

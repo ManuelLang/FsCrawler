@@ -1,12 +1,17 @@
+/*
+ * Copyright (c) 2023. Manuel LANG
+ * Software under GNU AGPLv3 licence
+ */
+
 CREATE TABLE `path`
 (
     `id`              int(11)       NOT NULL AUTO_INCREMENT,
     `path`            varchar(2000) NOT NULL UNIQUE,
-    `extension`       varchar(20)   NOT NULL,
+    `extension`       varchar(512)  NOT NULL,
     `name`            varchar(2000) NOT NULL,
     `owner`           varchar(255)           DEFAULT NULL,
     `group`           varchar(255)           DEFAULT NULL,
-    `root`            varchar(25)            DEFAULT NULL,
+    `root`            varchar(255)           DEFAULT NULL,
     `drive`           varchar(25)            DEFAULT NULL,
     `size_in_mb`      DECIMAL(20, 12)        DEFAULT NULL,
     `hash_md5`        char(32)               DEFAULT NULL,
