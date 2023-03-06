@@ -24,8 +24,7 @@ A [QueueObserver](./app/observers/queue_observer.py) is provided to simply store
 MIME-type, extract text (for indexing using search engine for example), generate thumbnail, extract metadata (ie.e
 ID3-tag for audio files, ITPC or EXIF for pictures).
 
-These processors are invoked through a queue consumer. Using single-threaded crawler with decoupled processing optimizes
-the disk I/O access for better performance.
+These processors are invoked through a queue consumer.
 
 ## How to run it
 
@@ -43,4 +42,4 @@ PYTHONPATH=app python3 -m crawler_entry_point
   is *after* the root part
 * Parametize paths to be crawled (with click)
 * Filters in config file
-* docker file
+* docker file to run as a container

@@ -45,7 +45,7 @@ class TextExtractorFileProcessor(IPathProcessor):
 
                 text = text_extractor.extract_text(crawl_event.path)
             except Exception as ex2:
-                logger.error(f"Unable to extract text from file '{path_model.path}': {ex}")
+                logger.error(f"Unable to extract text from file '{path_model.relative_path}': {ex}")
 
         if text:
             text_output_path = os.path.join(self.out_text_directory, f"{path_model.hash_md5}.txt")

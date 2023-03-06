@@ -14,24 +14,40 @@ class PathModel(ABC):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'path_type') and
-                callable(subclass.path_type)
-                )
+                callable(subclass.path_type))
 
-    def __init__(self, path: Path, size_in_mb: int = 0) -> None:
+    def __init__(self, root: str, path, size_in_mb: int = 0) -> None:
         super().__init__()
         if not path:
             raise ValueError("The path is mandatory")
-        if not path.exists():
-            raise ValueError(f"The given path does not exists: '{path}'")
+        if not isinstance(path, Path):
+            path = Path(path)
 
-        self.path: str = str(path)
-        self.extension: str = path.suffix
-        self.name: str = path.stem
-        self.owner: str = path.owner()
-        self.group: str = path.group()
-        self.root: str = path.root
-        self.drive: str = path.drive
+        self.id: int = 0
+        if path:
+            path = str(path)
+        self.path_root: str = root
+        start_index = path.find(root)
+        self.relative_path: str = path[start_index + len(root) - 1:] if start_index >= 0 and len(root) > 0 else path
+        parts = self.relative_path.split('.')
+        parts.reverse()
+        self.extension: str = parts[0]
         self.size_in_mb: int = size_in_mb
+
+        if isinstance(path, Path) and path.exists():
+            self.name: str = path.stem
+            self.owner: str = path.owner()
+            self.group: str = path.group()
+            self.root: str = path.root
+            self.drive: str = path.drive
+            self.status = 'CURRENT'
+        else:
+            self.name: str = ''
+            self.owner: str = ''
+            self.group: str = ''
+            self.root: str = ''
+            self.drive: str = ''
+            self.status = 'DELETED'
         self.hash_md5: str = ''
         self.hash_sha256: str = ''
         self.is_windows_path: bool = False
@@ -89,6 +105,15 @@ class PathModel(ABC):
         ):
             return ContentFamily.ARCHIVE
         return ContentFamily.APPLICATION
+
+    @staticmethod
+    def from_dict(values: dict):
+        path = values.get('path', '')
+        root = values.get('root', '')
+        if not path:
+            return None
+        path_model: PathModel = PathModel(root=root, path=path)
+        return path_model
 
     def to_json(self):
         props = self.__dict__.copy()

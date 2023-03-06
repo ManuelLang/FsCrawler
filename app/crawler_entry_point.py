@@ -25,7 +25,10 @@ drives = [dp.device for dp in drps if dp.fstype == 'NTFS']
 
 
 def main():
-    crawler = FileSystemCrawler(roots=['/Volumes/data-music/zz_recycle/Mc Solaar'])
+    roots: dict = {
+        '/Volumes/data-music/zz_recycle/': '/Volumes/'
+    }
+    crawler = FileSystemCrawler(roots=roots)
     crawler.add_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
     crawler.add_filter(PatternFilter(excluded_path_pattern=".AppleDouble"))
     crawler.add_filter(PatternFilter(excluded_path_pattern=".LSOverride"))
@@ -78,14 +81,16 @@ def main():
 
     hash_algos = {}
     hash_algos['md5'] = hashlib.md5()
-    # hash_algos['sha256'] = hashlib.sha256()   # Avoids risk of collisions, but super slow
+    # hash_algos['sha256'] = hashlib.sha256()   # Avoids risk of collisions, but much slower
     processors.append(HashFileProcessor(hash_algorithms=hash_algos))
     processors.append(ExtendedAttributesFileProcessor())
 
     data_manager: PathDataManager = PathDataManager()
-    queue_consumer = CrawlingQueueConsumer(crawling_queue=crawling_queue, path_processors=processors)
+    queue_consumer = CrawlingQueueConsumer(crawling_queue=crawling_queue,
+                                           path_processors=processors,
+                                           data_manager=data_manager,
+                                           update_existing_paths=False)
 
-    # region crawling
     producer_thread = threading.Thread(target=crawler.start, name="FileCrawler - producer")  # Search paths
     consumer_thread = threading.Thread(target=queue_consumer.start, name="File consumer")  # Process paths
 
@@ -99,27 +104,6 @@ def main():
     logger.info(f"Crawled {len(crawler.files_processed)} files (total of {crawler.crawled_files_size:0.2f} Mb) "
                 f"in {crawl_duration} sec")
     metricsObserver.print_statistics()
-    # endregion
-
-    # region database
-    logger.info(f"Saving now {len(queue_consumer.processed_files)} files into DB...")
-
-    for file in queue_consumer.processed_files:
-        data_manager.save_path(file)
-        logger.debug(f"Saved file {file.path} into DB")
-    logger.info(f"Done saving files! {len(queue_consumer.processed_files)} files saved to DB")
-
-    for dir in queue_consumer.processed_directories:
-        data_manager.save_path(dir)
-        logger.debug(f"Saved dir {dir.path} into DB")
-    logger.info(f"Done saving directories! {len(queue_consumer.processed_directories)} directories saved to DB")
-
-    total_duration = datetime.now() - crawler.start_time
-    logger.info(
-        f"Crawled and processed {len(crawler.files_processed)} files (total of {crawler.crawled_files_size:0.2f} Mb) "
-        f"in {total_duration} sec")
-    metricsObserver.print_statistics()
-
 
 # endregion
 

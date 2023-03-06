@@ -2,6 +2,7 @@
  * Copyright (c) 2023. Manuel LANG
  * Software under GNU AGPLv3 licence
  */
+Drop TABLE IF EXISTS `path`;
 
 CREATE TABLE `path`
 (
@@ -35,4 +36,5 @@ CREATE TABLE `path`
     KEY `ix_path_id` (`id`),
     KEY `ix_path_path` (`path`)
 ) ENGINE = InnoDB
-  DEFAULT CHARSET = latin1;
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;

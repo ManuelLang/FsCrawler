@@ -79,7 +79,8 @@ elif 'error' in LOG_LEVEL.lower():
 else:
     LOGGING_LEVEL = logging.FATAL
 
-logging.basicConfig(filemode='w', format='%(asctime)s %(name)s - %(levelname)s - %(message)s', level=LOGGING_LEVEL)
+logging.basicConfig(filemode='w', format='%(asctime)s %(thread)d %(threadName)s %(name)s - %(levelname)s - %(message)s',
+                    level=LOGGING_LEVEL)
 
 logger.configure(handlers=[{"sink": sys.stderr, "level": LOGGING_LEVEL}])
 # logger.add("log_output_{time}.log")

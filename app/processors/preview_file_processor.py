@@ -38,4 +38,4 @@ class PreviewFileProcessor(IPathProcessor):
             thumb_output_path = os.path.join(self.out_thumb_directory, f"{path_model.hash_md5}.png")
             generate_thumbnail(crawl_event.path, thumb_output_path, options)
         except Exception as ex:
-            logger.error(f"Unable to generate thumbnail from file '{path_model.path}': {ex}")
+            logger.error(f"Unable to generate thumbnail from file '{path_model.relative_path}': {ex}")
