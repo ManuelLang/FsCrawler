@@ -44,7 +44,7 @@ class ExtendedAttributesFileProcessor(IPathProcessor):
             path_model.system = lstat.st_file_attributes & stat.FILE_ATTRIBUTE_SYSTEM
             path_model.temporary = lstat.st_file_attributes & stat.FILE_ATTRIBUTE_TEMPORARY
 
-        logger.info(f"Done fetching file's extended attributes: {path_model.relative_path}")
+        logger.info(f"Done fetching file's extended attributes: {path_model.full_path}")
 
     @staticmethod
     def is_file_hidden(file_name: str, lstat):

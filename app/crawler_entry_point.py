@@ -26,7 +26,7 @@ drives = [dp.device for dp in drps if dp.fstype == 'NTFS']
 
 def main():
     roots: dict = {
-        '/Volumes/data-music/zz_recycle/': '/Volumes/'
+        '/Volumes/data-music/zz_recycle': '/Volumes/'
     }
     crawler = FileSystemCrawler(roots=roots)
     crawler.add_filter(PatternFilter(excluded_path_pattern=".DS_Store"))

@@ -9,6 +9,7 @@ from loguru import logger
 
 from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
 from interfaces.iPathProcessor import IPathProcessor
+from models.content import ContentFamily
 from models.path import PathModel
 from models.path_type import PathType
 from processors.metadata_extractor.text_extractor.itext_extractor import ITextExtractor
@@ -38,14 +39,14 @@ class TextExtractorFileProcessor(IPathProcessor):
         except Exception as ex:
             try:
                 text_extractor: ITextExtractor = None
-                if is_picture:
+                if path_model.content_family == ContentFamily.PICTURE:
                     text_extractor = PictureTextExtractor()
-                elif is_pdf:
+                elif path_model.extension == 'pdf':
                     text_extractor = PdfTextHandler()
 
                 text = text_extractor.extract_text(crawl_event.path)
             except Exception as ex2:
-                logger.error(f"Unable to extract text from file '{path_model.relative_path}': {ex}")
+                logger.error(f"Unable to extract text from file '{path_model.full_path}': {ex}")
 
         if text:
             text_output_path = os.path.join(self.out_text_directory, f"{path_model.hash_md5}.txt")

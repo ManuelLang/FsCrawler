@@ -84,8 +84,8 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
 
     def _process_path(self, crawl_event: PathEventArgs, path_model: PathModel) -> PathModel:
         logger.info(f"Processing {path_model.path_type.name} '{crawl_event.path}'...")
-        if not self._force_refresh and self.data_manager and self.data_manager.path_exists(
-                path=path_model.relative_path):
+        if not self._force_refresh and self.data_manager \
+                and self.data_manager.path_exists(path=path_model.relative_path):
             logger.debug(f"Path already saved into DB: '{path_model.relative_path}'. Skipping")
             return path_model
         for processor in self._path_processors:

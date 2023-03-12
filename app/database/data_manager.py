@@ -34,7 +34,7 @@ class PathDataManager:
 
     @contextmanager
     def cursor(self, *args, **kwargs):
-        cursor = self.connection.cursor(*args, **kwargs)
+        cursor = self.connection.cursor(buffered=True, *args, **kwargs)
         try:
             yield cursor
         finally:
@@ -67,11 +67,11 @@ class PathDataManager:
                              f'hash_md5, hash_sha256, is_windows_path, hidden, archive, compressed, encrypted, ' \
                              f'offline, readonly, `system`, `temporary`, content_family, mime_type, path_type, ' \
                              f'path_stage, date_created, date_updated ' \
-                             f'FROM `path` WHERE `path` = %s'
+                             f'FROM `path` WHERE `path` like %s'
         path_model: PathModel = None
         try:
             with self.cursor() as cur:
-                cur.execute(sql_statement, [path])
+                cur.execute(sql_statement, [f"%{path}"])
                 row = cur.fetchone()
                 if not row:
                     return path_model
@@ -138,7 +138,7 @@ class PathDataManager:
                       path_model.mime_type, str(path_model.path_type), str(path_model.path_stage))
             with self.cursor() as cur:
                 cur.execute(sql_statement, params)
-            logging.debug(f"Saved path '{path_model.relative_path}' into DB")
+            logging.debug(f"Saved path '{path_model.full_path}' into DB")
         except Exception as ex:
             logger.error(
                 f"Unable to execute SQL command:\n{sql_statement}\nError: {ex}\nPath: '{path_model.relative_path if path_model else 'None'}'")

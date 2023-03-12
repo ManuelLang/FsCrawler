@@ -1,6 +1,7 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
 
+import os
 from abc import ABC
 from pathlib import Path
 
@@ -22,19 +23,27 @@ class PathModel(ABC):
             raise ValueError("The path is mandatory")
         if not isinstance(path, Path):
             path = Path(path)
+        path_str = str(path)
 
         self.id: int = 0
-        if path:
-            path = str(path)
         self.path_root: str = root
-        start_index = path.find(root)
-        self.relative_path: str = path[start_index + len(root) - 1:] if start_index >= 0 and len(root) > 0 else path
-        parts = self.relative_path.split('.')
+        start_index = path_str.find(root)
+        self.relative_path: str = path_str[start_index + len(root) - 1:] if start_index >= 0 and len(
+            root) > 0 else path_str
+        if self.relative_path and len(self.relative_path) > 0 and self.relative_path[0] == '/':
+            self.relative_path = self.relative_path[1:]
+
+        self.extension: str = ''
+        parts = path_str.split('/')
         parts.reverse()
-        self.extension: str = parts[0]
+        file_name = parts[0] if parts else None
+        if file_name and '.' in file_name:
+            file_parts = file_name.split('.')
+            file_parts.reverse()
+            self.extension = file_parts[0]
         self.size_in_mb: int = size_in_mb
 
-        if isinstance(path, Path) and path.exists():
+        if path.exists():
             self.name: str = path.stem
             self.owner: str = path.owner()
             self.group: str = path.group()
@@ -66,6 +75,11 @@ class PathModel(ABC):
     @property
     def path_type(self) -> PathType:
         raise NotImplementedError()
+
+    @property
+    def full_path(self) -> str:
+        full_path = os.path.join(self.path_root, self.relative_path)
+        return full_path
 
     @staticmethod
     def get_content_familiy_from_mime_type(mime_type: str):
