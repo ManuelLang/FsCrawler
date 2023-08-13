@@ -1,0 +1,13 @@
+roots: [
+    root:
+      - path: '/Volumes/data-music/zz_recycle/Mc Solaar'
+      - volumeRoot: '/Volumes/data-music/',
+
+    root:
+      - path: '/Volumes/data-music/zz_recycle/Mc Solaar'
+      - volumeRoot: '/Volumes/data-music/'
+]
+
+filters:
+  - PatternFilter:
+      - excluded_file_path: 'app/config/.crawlerignore'

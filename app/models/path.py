@@ -4,6 +4,7 @@
 import os
 from abc import ABC
 from pathlib import Path
+from typing import Dict
 
 from models.content import ContentFamily
 from models.path_stage import PathStage
@@ -71,15 +72,20 @@ class PathModel(ABC):
         self.content_family: str = ''
         self.mime_type: str = ''
         self.path_stage: PathStage = PathStage.CRAWLED  # if an instance of path is created, it means it was crawled
+        self._tags: Dict[str, str] = {}  # For finder tags: <Label_Name, Color_name>
 
     @property
     def path_type(self) -> PathType:
         raise NotImplementedError()
 
     @property
+    def tags(self) -> Dict[str, str]:  # For finder tags: <Label_Name, Color_name>
+        return self._tags
+
+    @property
     def full_path(self) -> str:
-        full_path = os.path.join(self.path_root, self.relative_path)
-        return full_path
+        _full_path = os.path.join(self.path_root, self.relative_path)
+        return _full_path
 
     @staticmethod
     def get_content_familiy_from_mime_type(mime_type: str):

@@ -100,7 +100,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
             self.data_manager.save_path(path_model=path_model)
             logger.info(f"Done saving path '{path_model.relative_path}' into DB")
         else:
-            logger.debug(f"Path not saved: {path_model.relative_path}")
+            logger.debug(f"Path not saved in DB (data_manager is None): {path_model.relative_path}")
         return path_model
 
     def start(self):
