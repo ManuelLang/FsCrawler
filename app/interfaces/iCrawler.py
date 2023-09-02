@@ -12,7 +12,7 @@ class ICrawler(ABC):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'filters') and
-                callable(subclass.filters) and
+                callable(subclass.skip_filters) and
                 hasattr(subclass, 'observers') and
                 callable(subclass.observers) and
                 hasattr(subclass, 'require_stop') and
@@ -48,7 +48,7 @@ class ICrawler(ABC):
         raise NotImplementedError()
 
     @property
-    def filters(self) -> List[object]:
+    def skip_filters(self) -> List[object]:
         raise NotImplementedError()
 
     @property

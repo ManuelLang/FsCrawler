@@ -3,6 +3,7 @@
 
 import hashlib
 import os
+import sys
 import threading
 from datetime import datetime
 from queue import Queue
@@ -11,16 +12,19 @@ from typing import List
 import psutil
 from loguru import logger
 
-from crawler.file_system_crawler import FileSystemCrawler
-from crawling_queue_consumer import CrawlingQueueConsumer
-from database.data_manager import PathDataManager
-from filters.path_pattern_filter import PatternFilter
-from interfaces.iPathProcessor import IPathProcessor
-from observers.metrics_observer import MetricsObserver
-from observers.queue_observer import QueueObserver
-from processors.hash_file_processor import HashFileProcessor
-from processors.metadata_extractor.extended_attributes_file_processor import ExtendedAttributesFileProcessor
-from processors.metadata_extractor.mac_finfer_tags_extractor import MacFinderTagsExtractorFileProcessor
+root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(root_folder)
+
+from app.crawler.file_system_crawler import FileSystemCrawler
+from app.crawling_queue_consumer import CrawlingQueueConsumer
+from app.database.data_manager import PathDataManager
+from app.filters.path_pattern_filter import PatternFilter
+from app.interfaces.iPathProcessor import IPathProcessor
+from app.observers.metrics_observer import MetricsObserver
+from app.observers.queue_observer import QueueObserver
+from app.processors.hash_file_processor import HashFileProcessor
+from app.processors.metadata_extractor.extended_attributes_file_processor import ExtendedAttributesFileProcessor
+from app.processors.metadata_extractor.mac_finfer_tags_extractor import MacFinderTagsExtractorFileProcessor
 
 drps = psutil.disk_partitions()
 drives = [dp.device for dp in drps if dp.fstype == 'NTFS']
@@ -32,81 +36,81 @@ def main():
         '/Volumes/data-music/zz_recycle': '/Volumes/'  # Path, Root part from the mapped volume
     }
     crawler = FileSystemCrawler(roots=roots)
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".AppleDouble"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".LSOverride"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".idea/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".Trashes"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="out/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".idea_modules/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="build/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="dist/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="lib/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/venv"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".pyenv/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/env/lib/python"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/python2.7/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/bin/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/.git/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".git/objects"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="@angular*"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="node_modules/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="botocore/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="boto3/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".jar$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".war$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".terraform/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".terraformrc/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="package/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".class$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="target/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="__pycache__"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".pyc$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="mypy_boto3_builder/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".gradle/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".mvn/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".db$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".dat$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".bak$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".log$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".ibd"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".npm/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".nvm/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".npm-packages/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".node-gyp/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".node_repl_history"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".m2/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".plugins/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".cache/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".docker/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="dockervolumes/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/jenkins/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="testcontainers.properties"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".eclipse/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".Trash/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".krew/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="kube/cache/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="kube/http-cache/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".android/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".bash_sessions/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".sqldeveloper/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/Quarantine/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".atom/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".oracle_jre_usage/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".poetry/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".psql_history/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".pylint.d/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".rnd/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".splunk/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".splunkrc/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".vnc/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/kubepug/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/open-zwave.git/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/Library/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/chromedriver/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/tmp/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/tutorials/guest/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/navifycli_py3/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".AppleDouble"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".LSOverride"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".idea/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".Trashes"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="out/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".idea_modules/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="build/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="dist/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="lib/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/venv"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".pyenv/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/env/lib/python"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/python2.7/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/bin/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/.git/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".git/objects"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="@angular*"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="node_modules/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="botocore/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="boto3/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".jar$"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".war$"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".terraform/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".terraformrc/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="package/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".class$"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="target/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="__pycache__"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".pyc$"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="mypy_boto3_builder/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".gradle/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".mvn/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".db$"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".dat$"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".bak$"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".log$"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".ibd"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".npm/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".nvm/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".npm-packages/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".node-gyp/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".node_repl_history"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".m2/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".plugins/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".cache/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".docker/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="dockervolumes/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/jenkins/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="testcontainers.properties"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".eclipse/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".Trash/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".krew/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="kube/cache/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="kube/http-cache/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".android/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".bash_sessions/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".sqldeveloper/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/Quarantine/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".atom/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".oracle_jre_usage/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".poetry/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".psql_history/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".pylint.d/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".rnd/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".splunk/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".splunkrc/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".vnc/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/kubepug/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/open-zwave.git/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/Library/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/chromedriver/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/tmp/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/tutorials/guest/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/navifycli_py3/"))
 
     crawling_queue: Queue = Queue()
     # crawler.add_observer(LoggingObserver())

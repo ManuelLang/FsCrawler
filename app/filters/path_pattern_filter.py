@@ -6,6 +6,7 @@ from pathlib import Path
 from loguru import logger
 
 from app.filters.filter import Filter
+from app.helpers.serializationHelper import JsonDumper
 from app.interfaces.iCrawler import ICrawler
 
 
@@ -55,3 +56,6 @@ class PatternFilter(Filter):
 
     def __hash__(self) -> int:
         return hash(tuple(sorted(self.to_json())))
+
+    def __str__(self) -> str:
+        return JsonDumper.dumps(self.to_json())

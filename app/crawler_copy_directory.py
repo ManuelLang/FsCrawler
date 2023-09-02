@@ -1,92 +1,59 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
 
+import os
+import sys
 import threading
 from datetime import datetime
+from pathlib import Path
 from queue import Queue
 from typing import List
 
 from loguru import logger
 
-from crawler.file_system_crawler import FileSystemCrawler
-from crawling_queue_consumer import CrawlingQueueConsumer
-from filters.path_pattern_filter import PatternFilter
-from interfaces.iPathProcessor import IPathProcessor
-from observers.metrics_observer import MetricsObserver
-from observers.queue_observer import QueueObserver
-from processors.copy_file_processor import CopyFileProcessor
+root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(root_folder)
+
+from app.crawler.file_system_crawler import FileSystemCrawler
+from app.crawling_queue_consumer import CrawlingQueueConsumer
+from app.filters.path_pattern_filter import PatternFilter
+from app.interfaces.iFilter import IFilter
+from app.interfaces.iPathProcessor import IPathProcessor
+from app.observers.metrics_observer import MetricsObserver
+from app.observers.queue_observer import QueueObserver
+from app.processors.copy_path_processor import CopyPathProcessor
+from app.processors.delete_path_processor import DeletePathProcessor
+
+roots: dict = {
+    f"{Path.home()}/test_crawler_copy": f"{Path.home()}/"  # Path, Root part from the mapped volume
+}
+trash_path = f"{Path.home()}/.delete/"  # A directory used a virtual trash (unwanted files would be moved here, preserving the file structure)
+backup_path = f"{Path.home()}/backup/"  # The target directory to backup files
+
+delete_patterns = ['/dist/', '/jMeter/', '.DS_Store', '.AppleDouble', '.LSOverride', '.Trashes', 'out/', 'build/',
+                   'dist/', '@angular', 'node_modules/', '.jar$', '.war$', '.class$', 'target/', '.pyc$', '.dat$',
+                   '.bak$', '.log$', '.npm/', '.nvm/', '.npm-packages/', '.node-gyp/', '.node_repl_history',
+                   '.plugins/', '.cache/', '/jenkins/', 'testcontainers.properties', '.eclipse/', '.Trash/',
+                   '.krew/', 'kube/cache/', 'kube/http-cache/', '.android/', '.bash_sessions/', '.sqldeveloper/',
+                   '/Quarantine/', '.atom/', '.oracle_jre_usage/', '.poetry/', '.psql_history/', '.pylint.d/',
+                   '.rnd/', '.splunk/', '.splunkrc/', '.vnc/', '/kubepug/', '/open-zwave.git/', '/chromedriver/',
+                   '/tmp/', '/tutorials/guest/', '/navifycli_py3/', '/.ApacheDirectoryStudio/', '.!bt']
+
+ignore_patterns = ['/.git/', '.idea/', '.idea_modules/', 'lib/', '/venv', '.pyenv/', '/env/lib/python',
+                   '/python2.7/', '/bin/', '/.git/', '.git/objects', 'botocore/', 'boto3/', '.terraform/',
+                   '.terraformrc/', 'package/', '__pycache__', 'mypy_boto3_builder/', '.gradle/', '.mvn/', '.db$',
+                   '.ibd', '.m2/', '.docker/', 'dockervolumes/', '/Library/', trash_path]
 
 
-def main():
-    roots: dict = {
-        '/Users/langm27/metrcis_postgres_backup': '/Users/langm27'  # Path, Root part from the mapped volume
-    }
-    crawler = FileSystemCrawler(roots=roots)
-
-    ignore_patterns = ['/dist/', '/.git/', '/jMeter/', '.DS_Store', '.AppleDouble', '.LSOverride', '.idea/', '.Trashes',
-                       'out/', '.idea_modules/', 'build/', 'dist/', 'lib/', '/venv', '.pyenv/', '/env/lib/python',
-                       '/python2.7/', '/bin/', '/.git/', '.git/objects', '@angular', 'node_modules/', 'botocore/',
-                       'boto3/', '.jar$', '.war$', '.terraform/', '.terraformrc/', 'package/', '.class$', 'target/',
-                       '__pycache__', '.pyc$']
-    for pattern in ignore_patterns:
-        crawler.add_filter(PatternFilter(excluded_path_pattern=pattern))
-
-    crawler.add_filter(PatternFilter(excluded_path_pattern="mypy_boto3_builder/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".gradle/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".mvn/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".db$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".dat$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".bak$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".log$"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".ibd"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".npm/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".nvm/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".npm-packages/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".node-gyp/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".node_repl_history"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".m2/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".plugins/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".cache/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".docker/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="dockervolumes/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/jenkins/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="testcontainers.properties"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".eclipse/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".Trash/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".krew/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="kube/cache/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="kube/http-cache/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".android/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".bash_sessions/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".sqldeveloper/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/Quarantine/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".atom/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".oracle_jre_usage/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".poetry/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".psql_history/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".pylint.d/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".rnd/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".splunk/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".splunkrc/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern=".vnc/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/kubepug/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/open-zwave.git/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/Library/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/chromedriver/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/tmp/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/tutorials/guest/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/navifycli_py3/"))
-    crawler.add_filter(PatternFilter(excluded_path_pattern="/.ApacheDirectoryStudio/"))
+def process_path(roots: dict, skip_filters: List[IFilter] = [], notify_filters: List[IFilter] = [],
+                 processors: List[IPathProcessor] = [],
+                 is_inverse_filter: bool = False) -> object:
+    crawler = FileSystemCrawler(roots=roots, skip_filters=skip_filters, notify_filters=notify_filters)
 
     crawling_queue: Queue = Queue()
-    # crawler.add_observer(LoggingObserver())
     metricsObserver = MetricsObserver()
     crawler.add_observer(metricsObserver)
-
     crawler.add_observer(QueueObserver(crawling_queue=crawling_queue))
-
-    processors: List[IPathProcessor] = []
-    processors.append(CopyFileProcessor(dest_dir_path='/Volumes/Data/Backups/2023-08-11_Roche/'))
 
     queue_consumer = CrawlingQueueConsumer(crawling_queue=crawling_queue,
                                            path_processors=processors,
@@ -108,7 +75,45 @@ def main():
     metricsObserver.print_statistics()
 
 
-# endregion
+def delete_unwanted_files(roots: dict, delete_patterns: List[str], trashbin_path: str = f"{Path.home()}/.delete"):
+    logger.info("Deleting unwanted files")
+
+    filters: List[IFilter] = []
+    for pattern in delete_patterns:
+        filters.append(PatternFilter(authorized_path_pattern=pattern))
+
+    return process_path(roots=roots,
+                        skip_filters=[
+                            PatternFilter(excluded_path_pattern=trash_path)
+                        ],
+                        notify_filters=filters,
+                        processors=[
+                            DeletePathProcessor(trashbin_path=trashbin_path)
+                        ],
+                        is_inverse_filter=True)
+
+
+def copy_files(roots: dict, ignore_patterns: List[str], dest_dir_path: str):
+    logger.info(f"Copying files to '{dest_dir_path}'")
+
+    filters: List[IFilter] = []
+    for pattern in ignore_patterns:
+        filters.append(PatternFilter(excluded_path_pattern=pattern))
+
+    return process_path(roots=roots,
+                        skip_filters=filters,
+                        processors=[
+                            CopyPathProcessor(dest_dir_path=dest_dir_path)
+                        ])
+
+
+def main():
+    # First cleanup rubbish items
+    delete_unwanted_files(roots=roots, delete_patterns=delete_patterns)
+
+    # Then copy all files excluding unwanted ones (if any left)
+    delete_patterns.extend(ignore_patterns)
+    copy_files(roots=roots, ignore_patterns=delete_patterns, dest_dir_path=backup_path)
 
 
 if __name__ == '__main__':

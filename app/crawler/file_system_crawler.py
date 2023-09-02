@@ -8,32 +8,44 @@ from typing import List, Dict
 
 from loguru import logger
 
+from app.crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
+from app.crawler.events.crawlErrorEventArgs import CrawlErrorEventArgs
+from app.crawler.events.crawlProgressEventArgs import CrawlProgessEventArgs
+from app.crawler.events.crawlStartingEventArgs import CrawlStartingEventArgs
+from app.crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
+from app.crawler.events.directoryCrawledEventArgs import DirectoryCrawledEventArgs
+from app.crawler.events.directoryFoundEventArgs import DirectoryFoundEventArgs
+from app.crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
+from app.crawler.events.fileFoundEventArgs import FileFoundEventArgs
+from app.crawler.events.pathFoundEventArgs import PathFoundEventArgs
+from app.crawler.events.pathSkippedEventArgs import PathSkippedEventArgs
+from app.helpers.filesize_helper import *
+from app.helpers.serializationHelper import JsonDumper
 from app.interfaces.iCrawler import ICrawler
 from app.interfaces.iCrawlerObserver import ICrawlerObserver
 from app.interfaces.iFilter import IFilter
-from crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
-from crawler.events.crawlErrorEventArgs import CrawlErrorEventArgs
-from crawler.events.crawlProgressEventArgs import CrawlProgessEventArgs
-from crawler.events.crawlStartingEventArgs import CrawlStartingEventArgs
-from crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
-from crawler.events.directoryCrawledEventArgs import DirectoryCrawledEventArgs
-from crawler.events.directoryFoundEventArgs import DirectoryFoundEventArgs
-from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
-from crawler.events.fileFoundEventArgs import FileFoundEventArgs
-from crawler.events.pathFoundEventArgs import PathFoundEventArgs
-from crawler.events.pathSkippedEventArgs import PathSkippedEventArgs
-from helpers.filesite_helper import *
 
 MIN_BLOCK_SIZE = 1024 * 4
 
 
 class FileSystemCrawler(ICrawler):
 
-    def __init__(self, roots: Dict[str, str], filters: List[IFilter] = [],
+    def __init__(self, roots: Dict[str, str], skip_filters: List[IFilter] = [], notify_filters: List[IFilter] = [],
                  observers: List[ICrawlerObserver] = []) -> None:
+        """
+        Create a new instance of crawler to browse  file system on a machine
+        :param roots: the base directories to scan. A dict is expected as <Base_Directory, Path_Part_To_Ignore>.
+        The `Path_Part_To_Ignore` is useful when workingon network drive, mapped volumes or any case when you want to get rid of path prefix
+        :param skip_filters: a set of rules to teach the crawler to ignore some paths based on criterion. This crawler will walk through the directories and subdirs as long a no filters prevents it.
+         When a filter prevents it, all sub-dirs are ignored. Notifications are sent each time a file/directory is authorized by all skip_filters (applies AND amongst filters).
+        :param observers: defines what  component to notify when files/directories are found
+        :param notify_filters: This crawler will walk through all the directories and subdirs (as allowed by skip_filters).
+        If notify_filters is set, notifications are sent only when the current path matches any of the filters.
+        """
         super().__init__()
         self.roots: Dict[str, str] = roots
-        self._filters: List[IFilter] = filters
+        self._skip_filters: List[IFilter] = skip_filters
+        self._notify_filters: List[IFilter] = notify_filters
         self._observers: List[ICrawlerObserver] = observers
         self._require_stop = False
         self._paths_to_crawl: Dict[Path, str] = {}
@@ -52,16 +64,21 @@ class FileSystemCrawler(ICrawler):
         self._end_time: datetime = None
         self.duration = 0
 
-    def add_filter(self, path_filter: IFilter):
+    def add_skip_filter(self, path_filter: IFilter):
         if not path_filter:
             raise ValueError("Missing argument 'path_filter'")
-        if path_filter not in self.filters:
-            self.filters.append(path_filter)
+        if path_filter not in self.skip_filters:
+            self.skip_filters.append(path_filter)
+        return self
+
+    def add_skip_filters(self, skip_filters: List[IFilter]):
+        for f in skip_filters:
+            self.add_skip_filter(f)
         return self
 
     @property
-    def filters(self) -> List[IFilter]:
-        return self._filters
+    def skip_filters(self) -> List[IFilter]:
+        return self._skip_filters
 
     def add_observer(self, observer: ICrawlerObserver):
         if not observer:
@@ -347,7 +364,16 @@ class FileSystemCrawler(ICrawler):
             if len(self._crawled_paths) % 1000 == 0:
                 self.notify_crawl_progress(crawl_event=CrawlProgessEventArgs(crawler=self))
 
-            if any(not f.authorize(crawler=self, path=entry) for f in self.filters):
+            # TODO: consider a more elegant way to achieve this:
+            # if any(not f.authorize(crawler=self, path=entry) for f in self.filters):
+            # But it is hard to debug
+            should_skip = False
+            for f in self.skip_filters:
+                if not f.authorize(crawler=self, path=entry):
+                    should_skip = True
+                    logger.debug(f"should_skip set to True by {f} for path {entry}")
+                    break
+            if should_skip:
                 self.notify_path_skipped(crawl_event=PathSkippedEventArgs(crawler=self, path=entry,
                                                                           is_dir=entry.is_dir(),
                                                                           is_file=entry.is_file(),
@@ -356,13 +382,22 @@ class FileSystemCrawler(ICrawler):
                 logger.debug(f"Path '{entry_str}' skipped...")
                 return path_size_in_mb, files_in_directory
 
+            # FIND mode: notify when path matches any of the notify_filters
+            should_notify = not self._notify_filters
+            for f in self._notify_filters:
+                if f.authorize(crawler=self, path=entry):
+                    should_notify = True
+                    logger.debug(f"should_notify set to True by {f} for path {entry}")
+                    break
+
             if entry.is_file():
                 logger.debug(f"Found file: '{entry_str}'")
-                self.notify_processed_file(crawl_event=FileCrawledEventArgs(crawler=self, path=entry,
-                                                                            is_dir=entry.is_dir(),
-                                                                            is_file=entry.is_file(),
-                                                                            size_in_mb=path_size_in_mb,
-                                                                            root_dir_path=root_dir))
+                if should_notify:
+                    self.notify_processed_file(crawl_event=FileCrawledEventArgs(crawler=self, path=entry,
+                                                                                is_dir=entry.is_dir(),
+                                                                                is_file=entry.is_file(),
+                                                                                size_in_mb=path_size_in_mb,
+                                                                                root_dir_path=root_dir))
             elif entry.is_dir():
                 logger.debug(f"Found directory: '{entry_str}'")
                 for dir_item in entry.iterdir():
@@ -371,13 +406,39 @@ class FileSystemCrawler(ICrawler):
                     files_in_directory += files_in_sub_directory
 
                 logger.info(f"Crawled directory '{entry_str}', size: {path_size_in_mb:0.2f} Mb")
-                self.notify_processed_directory(crawl_event=
-                                                DirectoryCrawledEventArgs(crawler=self, path=entry,
-                                                                          size_in_mb=path_size_in_mb,
-                                                                          files_in_dir=files_in_directory,
-                                                                          root_dir_path=root_dir))
+                if should_notify:
+                    self.notify_processed_directory(crawl_event=
+                                                    DirectoryCrawledEventArgs(crawler=self, path=entry,
+                                                                              size_in_mb=path_size_in_mb,
+                                                                              files_in_dir=files_in_directory,
+                                                                              root_dir_path=root_dir))
         except Exception as ex:
             logger.error(ex)
             self._errored_paths[str(path)] = str(ex)
             self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex, path=path))
         return path_size_in_mb, files_in_directory
+
+    def to_json(self) -> dict:
+        return {
+            "roots": self.roots,
+            "filters": self.skip_filters,
+            "observers": self.observers,
+            "paths_found": self.paths_found,
+            "paths_skipped": self.paths_skipped,
+            "files_processed": self.files_processed,
+            "directories_processed": self.directories_processed,
+            "crawled_paths": self.crawled_paths,
+            "crawled_files_size": self.crawled_files_size,
+            "processed_files_size": self.processed_files_size,
+            "errored_paths": self.errored_paths,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "duration": self.duration,
+            "nb_files_skipped": self.nb_files_skipped,
+            "nb_directories_skipped": self.nb_directories_skipped,
+            "crawl_in_progress": self.crawl_in_progress,
+            "require_stop": self._require_stop
+        }
+
+    def __str__(self) -> str:
+        return JsonDumper.dumps(self.to_json())
