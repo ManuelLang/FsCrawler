@@ -89,7 +89,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
             logger.debug(f"Path already saved into DB: '{path_model.relative_path}'. Skipping")
             return path_model
         for processor in self._path_processors:
-            if processor.processor_type == path_model.path_type or processor.processor_type == PathType.ALL:
+            if processor.processor_type.name == path_model.path_type.name or processor.processor_type.name == PathType.ALL.name:
                 try:
                     processor.process_path(crawl_event=crawl_event, path_model=path_model)
                 except Exception as ex:
@@ -120,14 +120,14 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
                     self._should_stop = True
                     break
 
-                if isinstance(crawl_event, FileCrawledEventArgs):
+                if crawl_event.__class__.__name__ == FileCrawledEventArgs.__name__:
                     path_model: PathModel = FileModel(root=crawl_event.root_dir_path, path=crawl_event.path,
                                                       size_in_mb=crawl_event.size_in_mb)
-                elif isinstance(crawl_event, DirectoryCrawledEventArgs):
+                elif crawl_event.__class__.__name__ == DirectoryCrawledEventArgs.__name__:
                     path_model: PathModel = DirectoryModel(root=crawl_event.root_dir_path, path=crawl_event.path,
                                                            size_in_mb=crawl_event.size_in_mb)
                 else:
-                    # logger.warning(f"Not a crawled path event: {crawl_event}")
+                    logger.warning(f"Not a crawled path event: {crawl_event.__class__.__name__}")
                     continue
 
                 futures = [executor.submit(self._process_path, crawl_event, path_model)]

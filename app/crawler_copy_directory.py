@@ -25,10 +25,10 @@ from app.processors.copy_path_processor import CopyPathProcessor
 from app.processors.delete_path_processor import DeletePathProcessor
 
 roots: dict = {
-    f"{Path.home()}/test_crawler_copy": f"{Path.home()}/"  # Path, Root part from the mapped volume
+    f"{Path.home()}/Downloads": f"{Path.home()}/"  # Path, Root part from the mapped volume
 }
-trash_path = f"{Path.home()}/.delete/"  # A directory used a virtual trash (unwanted files would be moved here, preserving the file structure)
-backup_path = f"{Path.home()}/backup/"  # The target directory to backup files
+trash_path = f"{Path.home()}/.delete"  # A directory used a virtual trash (unwanted files would be moved here, preserving the file structure)
+backup_path = f"{Path.home()}/backup"  # The target directory to backup files
 
 delete_patterns = ['/dist/', '/jMeter/', '.DS_Store', '.AppleDouble', '.LSOverride', '.Trashes', 'out/', 'build/',
                    'dist/', '@angular', 'node_modules/', '.jar$', '.war$', '.class$', 'target/', '.pyc$', '.dat$',
@@ -46,8 +46,7 @@ ignore_patterns = ['/.git/', '.idea/', '.idea_modules/', 'lib/', '/venv', '.pyen
 
 
 def process_path(roots: dict, skip_filters: List[IFilter] = [], notify_filters: List[IFilter] = [],
-                 processors: List[IPathProcessor] = [],
-                 is_inverse_filter: bool = False) -> object:
+                 processors: List[IPathProcessor] = []) -> object:
     crawler = FileSystemCrawler(roots=roots, skip_filters=skip_filters, notify_filters=notify_filters)
 
     crawling_queue: Queue = Queue()
@@ -89,8 +88,7 @@ def delete_unwanted_files(roots: dict, delete_patterns: List[str], trashbin_path
                         notify_filters=filters,
                         processors=[
                             DeletePathProcessor(trashbin_path=trashbin_path)
-                        ],
-                        is_inverse_filter=True)
+                        ])
 
 
 def copy_files(roots: dict, ignore_patterns: List[str], dest_dir_path: str):
@@ -109,7 +107,7 @@ def copy_files(roots: dict, ignore_patterns: List[str], dest_dir_path: str):
 
 def main():
     # First cleanup rubbish items
-    delete_unwanted_files(roots=roots, delete_patterns=delete_patterns)
+    # delete_unwanted_files(roots=roots, delete_patterns=delete_patterns)
 
     # Then copy all files excluding unwanted ones (if any left)
     delete_patterns.extend(ignore_patterns)

@@ -24,6 +24,7 @@ class PathModel(ABC):
             raise ValueError("The path is mandatory")
         if not isinstance(path, Path):
             path = Path(path)
+        self.path: Path = path
         path_str = str(path)
 
         self.id: int = 0
@@ -76,6 +77,11 @@ class PathModel(ABC):
 
     @property
     def path_type(self) -> PathType:
+        if self.path:
+            if self.path.is_file():
+                return PathType.FILE
+            elif self.path.is_dir():
+                return PathType.DIRECTORY
         raise NotImplementedError()
 
     @property
