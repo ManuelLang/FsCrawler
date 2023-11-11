@@ -21,15 +21,23 @@ logging.info(f"ENVIRONMENT: {ENVIRONMENT}")
 
 LOCAL_ENV = (ENVIRONMENT and ENVIRONMENT.lower() == 'local') \
             or os.getenv("LOCAL_ENV", "false").lower().strip() in [1, 'true', 'yes']
-config_file_name = f".env-{ENVIRONMENT}" if ENVIRONMENT else ".env"
+
+config_file_names = []
+if ENVIRONMENT:
+    config_file_names.append(f".env-{ENVIRONMENT}")
+config_file_names.append(".env")
+
+config = Config()
 directory = os.getcwd()
-config_file_path = os.path.abspath(f"./properties/{config_file_name}") \
-    if LOCAL_ENV else f"app/properties/{config_file_name}"
-if not os.path.exists(config_file_path):
-    logger.error(f"Path does not exists: {config_file_path}")
-else:
-    logger.info(f"Loading config from file '{config_file_path}'...")
-config = Config(config_file_path)
+for config_file_name in config_file_names:
+    config_file_path = os.path.abspath(f"./properties/{config_file_name}") \
+        if LOCAL_ENV else f"app/properties/{config_file_name}"
+    if not os.path.exists(config_file_path):
+        logger.error(f"Path does not exists: {config_file_path}")
+    else:
+        logger.info(f"Loading config from file '{config_file_path}'...")
+    config_tmp = Config(config_file_path)
+    config.file_values.update(config_tmp.file_values)
 
 
 PROJECT_NAME: str = config("PROJECT_NAME", default="File crawler")

@@ -16,3 +16,7 @@ starlette
 click
 xattr
 macos-tags
+psutil
+loguru
+more_itertools
+libmagic

@@ -28,6 +28,42 @@ These processors are invoked through a queue consumer.
 
 ## How to run it
 
+### Prerequisites
+
+#### Build virtual env
+
+```bash
+python3 -m venv venv
+```
+
+#### Install dependencies
+
+First install libmagic and my-sql client on your machine. Example for mac:
+```bash
+brew install libmagic mysql-client pkg-config
+export PKG_CONFIG_PATH="/opt/homebrew/opt/mysql-client/lib/pkgconfig"
+```
+
+Then:
+```bash
+source venv/bin/activate
+pip3 install -r requirements.txt
+```
+
+#### Spin up database
+
+```bash
+docker-compose up -d
+``` 
+
+Note: if you change DB password in docker-compose.yml, you need to trash the volume and start the container again, 
+like [this](https://www.geekyhacker.com/how-to-resolve-mysql-access-denied-in-docker-compose/):
+```bash
+docker-compose down -v
+```
+
+#### Run it
+
 ```bash
 PYTHONPATH=app python3 -m crawler_entry_point
 ```
