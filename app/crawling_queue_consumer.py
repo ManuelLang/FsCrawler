@@ -85,8 +85,8 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
     def _process_path(self, crawl_event: PathEventArgs, path_model: PathModel) -> PathModel:
         logger.info(f"Processing {path_model.path_type.name} '{crawl_event.path}'...")
         if not self._force_refresh and self.data_manager \
-                and self.data_manager.path_exists(path=path_model.relative_path):
-            logger.debug(f"Path already saved into DB: '{path_model.relative_path}'. Skipping")
+                and self.data_manager.path_exists(path=path_model.full_path):
+            logger.debug(f"Path already saved into DB: '{path_model.full_path}'. Skipping")
             return path_model
         for processor in self._path_processors:
             if processor.processor_type.name == path_model.path_type.name or processor.processor_type.name == PathType.ALL.name:
@@ -125,9 +125,10 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
                                                       size_in_mb=crawl_event.size_in_mb)
                 elif crawl_event.__class__.__name__ == DirectoryCrawledEventArgs.__name__:
                     path_model: PathModel = DirectoryModel(root=crawl_event.root_dir_path, path=crawl_event.path,
-                                                           size_in_mb=crawl_event.size_in_mb)
+                                                           size_in_mb=crawl_event.size_in_mb,
+                                                           files_in_dir=crawl_event.files_in_dir)
                 else:
-                    logger.warning(f"Not a crawled path event: {crawl_event.__class__.__name__}")
+                    logger.debug(f"Not a crawled path event: {crawl_event.__class__.__name__}")
                     continue
 
                 futures = [executor.submit(self._process_path, crawl_event, path_model)]

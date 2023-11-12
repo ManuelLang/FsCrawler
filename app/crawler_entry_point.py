@@ -8,6 +8,7 @@ import threading
 from datetime import datetime
 from queue import Queue
 from typing import List
+import platform
 
 import psutil
 from loguru import logger
@@ -26,9 +27,16 @@ from app.processors.hash_file_processor import HashFileProcessor
 from app.processors.metadata_extractor.extended_attributes_file_processor import ExtendedAttributesFileProcessor
 from app.processors.metadata_extractor.mac_finfer_tags_extractor import MacFinderTagsExtractorFileProcessor
 
-drps = psutil.disk_partitions()
-drives = [dp.device for dp in drps if dp.fstype == 'NTFS']
-drives = os.popen("hdparm -I /dev/sda | grep 'Serial Number'").read().split()
+# TODO: list partitions, get their UUID and map them with the roots to be crawled
+# drps = psutil.disk_partitions()
+#
+# if platform.system() == "Windows":
+#     drives = [dp.device for dp in drps if dp.fstype == 'NTFS']  # Windows
+# elif platform.system() == "Linux":
+#     drives = os.popen("hdparm -I /dev/sda | grep 'Serial Number'").read().split()   # Linux
+# elif platform.system() == "Darwin":
+#     # Mac OS
+#     drives = []
 
 
 def main():
@@ -127,7 +135,7 @@ def main():
     processors.append(ExtendedAttributesFileProcessor())
     processors.append(MacFinderTagsExtractorFileProcessor())
 
-    data_manager: PathDataManager = PathDataManager()
+    data_manager: PathDataManager = PathDataManager()   # Providing the data manager will persist processed paths into DB
     queue_consumer = CrawlingQueueConsumer(crawling_queue=crawling_queue,
                                            path_processors=processors,
                                            data_manager=data_manager,

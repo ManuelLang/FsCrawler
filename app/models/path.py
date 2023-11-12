@@ -25,18 +25,19 @@ class PathModel(ABC):
         if not isinstance(path, Path):
             path = Path(path)
         self.path: Path = path
-        path_str = str(path)
+        self._full_path: str = str(path)
 
         self.id: int = 0
         self.path_root: str = root
-        start_index = path_str.find(root)
-        self.relative_path: str = path_str[start_index + len(root) - 1:] if start_index >= 0 and len(
-            root) > 0 else path_str
+        start_index = self._full_path.find(root)
+        self.relative_path: str = self._full_path[start_index + len(root) - 1:] \
+            if start_index >= 0 and len(root) > 0 \
+            else self._full_path
         if self.relative_path and len(self.relative_path) > 0 and self.relative_path[0] == '/':
             self.relative_path = self.relative_path[1:]
 
         self.extension: str = ''
-        parts = path_str.split('/')
+        parts = self._full_path.split('/')
         parts.reverse()
         file_name = parts[0] if parts else None
         if file_name and '.' in file_name:
@@ -90,8 +91,9 @@ class PathModel(ABC):
 
     @property
     def full_path(self) -> str:
-        _full_path = os.path.join(self.path_root, self.relative_path)
-        return _full_path
+        # _full_path = os.path.join(self.path_root, self.relative_path)
+        # return _full_path
+        return self._full_path
 
     @staticmethod
     def get_content_familiy_from_mime_type(mime_type: str):

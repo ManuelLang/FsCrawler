@@ -9,11 +9,11 @@ from models.path_type import PathType
 
 
 class DirectoryModel(PathModel):
-    def __init__(self, root: str, path, size_in_mb: int = 0) -> None:
+    def __init__(self, root: str, path, size_in_mb: int = 0, files_in_dir: int = 0) -> None:
         super().__init__(root, path, size_in_mb)
-
         if isinstance(path, Path) and not path.is_dir():
-            raise ValueError(f"The given path is not a file: '{path}'")
+            raise ValueError(f"The given path is not a directory: '{path}'")
+        self.files_in_dir: int = files_in_dir
 
     @property
     def path_type(self) -> PathType:

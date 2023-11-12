@@ -53,7 +53,7 @@ pip3 install -r requirements.txt
 #### Spin up database
 
 ```bash
-docker-compose up -d
+cd docker/ && docker-compose up -d
 ``` 
 
 Note: if you change DB password in docker-compose.yml, you need to trash the volume and start the container again, 
@@ -65,6 +65,15 @@ docker-compose down -v
 #### Run it
 
 ```bash
+PYTHONPATH=app python3 -m crawler_entry_point
+```
+
+#### All in one
+
+```bash
+source venv/bin/activate
+cd docker
+docker-compose up -d
 PYTHONPATH=app python3 -m crawler_entry_point
 ```
 
