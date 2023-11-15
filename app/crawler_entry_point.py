@@ -25,7 +25,8 @@ from app.observers.metrics_observer import MetricsObserver
 from app.observers.queue_observer import QueueObserver
 from app.processors.hash_file_processor import HashFileProcessor
 from app.processors.metadata_extractor.extended_attributes_file_processor import ExtendedAttributesFileProcessor
-from app.processors.metadata_extractor.mac_finfer_tags_extractor import MacFinderTagsExtractorFileProcessor
+if platform.system() == "Darwin":
+    from app.processors.metadata_extractor.mac_finfer_tags_extractor import MacFinderTagsExtractorFileProcessor
 
 # TODO: list partitions, get their UUID and map them with the roots to be crawled
 # drps = psutil.disk_partitions()
@@ -41,7 +42,7 @@ from app.processors.metadata_extractor.mac_finfer_tags_extractor import MacFinde
 
 def main():
     roots: dict = {
-        '/Volumes/data-music/zz_recycle': '/Volumes/'  # Path, Root part from the mapped volume
+        '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/blah/Sauveguarde MacBookProActelion/test-desk/Audios/Grand Angle': '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/'  # Path, Root part from the mapped volume
     }
     crawler = FileSystemCrawler(roots=roots)
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
@@ -133,7 +134,8 @@ def main():
     # hash_algos['sha256'] = hashlib.sha256()   # Avoids risk of collisions, but much slower
     processors.append(HashFileProcessor(hash_algorithms=hash_algos))
     processors.append(ExtendedAttributesFileProcessor())
-    processors.append(MacFinderTagsExtractorFileProcessor())
+    if platform.system() == "Darwin":
+        processors.append(MacFinderTagsExtractorFileProcessor())
 
     data_manager: PathDataManager = PathDataManager()   # Providing the data manager will persist processed paths into DB
     queue_consumer = CrawlingQueueConsumer(crawling_queue=crawling_queue,

@@ -44,6 +44,12 @@ brew install libmagic mysql-client pkg-config
 export PKG_CONFIG_PATH="/opt/homebrew/opt/mysql-client/lib/pkgconfig"
 ```
 
+For Linux:
+```bash
+sudo apt install -y mysql-client default-libmysqlclient-dev
+# sudo apt install -y postgresql-client
+```
+
 Then:
 ```bash
 source venv/bin/activate
@@ -53,7 +59,9 @@ pip3 install -r requirements.txt
 #### Spin up database
 
 ```bash
-cd docker/ && docker-compose up -d
+sudo mkdir -p /var/lib/mysql/
+cd docker/
+docker-compose up -d
 ``` 
 
 Note: if you change DB password in docker-compose.yml, you need to trash the volume and start the container again, 
