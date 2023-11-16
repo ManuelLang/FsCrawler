@@ -9,6 +9,7 @@ from typing import List, Dict
 
 from loguru import logger
 
+from config.config import config
 from crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
 from crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
 from crawler.events.crawlerEventArgs import CrawlerEventArgs
@@ -59,7 +60,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
 
     def pop_item(self) -> CrawlerEventArgs:
         item: CrawlerEventArgs = None
-        max_retries = 10
+        max_retries = config.QUEUE_WAIT_TIME
         try:
             while self._crawling_queue.empty():
                 if self.should_stop:

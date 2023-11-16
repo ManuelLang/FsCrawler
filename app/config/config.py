@@ -117,4 +117,6 @@ logging.getLogger('requests').setLevel(logging.INFO if DEBUG else logging.ERROR)
 logging.getLogger('urllib3').setLevel(logging.INFO if DEBUG else logging.ERROR)
 logging.getLogger('botocore').setLevel(logging.INFO if DEBUG else logging.WARNING)
 
-QUEUE_WAIT_TIME: int = config("QUEUE_WAIT_TIME", cast=int, default=10)
+QUEUE_MAX_SIZE: int = config("QUEUE_MAX_SIZE", default=100000)
+QUEUE_MIN_SIZE: int = config("QUEUE_MIN_SIZE", default=1000)
+QUEUE_WAIT_TIME: int = config("QUEUE_WAIT_TIME", cast=int, default=10)  # seconds to wait for queue to get new items when empty

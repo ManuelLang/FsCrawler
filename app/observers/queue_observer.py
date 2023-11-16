@@ -32,9 +32,10 @@ class QueueObserver(ICrawlerObserver):
 
     def _put_queue_event(self, crawl_event: CrawlerEventArgs):
         try:
-            while self._crawling_queue.full():
-                logger.info("Queue full, waiting for the files to be processed")
-                time.sleep(config.QUEUE_WAIT_TIME)
+            if self._crawling_queue.full():
+                while self._crawling_queue.qsize() >= config.QUEUE_MIN_SIZE:
+                    logger.info("Queue full, waiting for the files to be processed...")
+                    time.sleep(config.QUEUE_WAIT_TIME / 3)
             self._crawling_queue.put(crawl_event)
         except Exception as ex:
             logger.error(f"Error while pushing item '{crawl_event}' to queue for processing: {ex}")

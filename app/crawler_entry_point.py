@@ -13,9 +13,11 @@ import platform
 import psutil
 from loguru import logger
 
+
 root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_folder)
 
+from app.config import config
 from app.crawler.file_system_crawler import FileSystemCrawler
 from app.crawling_queue_consumer import CrawlingQueueConsumer
 from app.database.data_manager import PathDataManager
@@ -121,7 +123,7 @@ def main():
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/tutorials/guest/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/navifycli_py3/"))
 
-    crawling_queue: Queue = Queue()
+    crawling_queue: Queue = Queue(maxsize=config.QUEUE_MAX_SIZE)
     # crawler.add_observer(LoggingObserver())
     metricsObserver = MetricsObserver()
     crawler.add_observer(metricsObserver)
