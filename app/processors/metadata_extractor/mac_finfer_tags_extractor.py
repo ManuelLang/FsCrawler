@@ -32,11 +32,11 @@ class MacFinderTagsExtractorFileProcessor(IPathProcessor):
         return PathType.FILE
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
-        logger.info(f"Fetching file's Finder labels: {path_model}")
+        logger.debug(f"Fetching file's Finder labels: {path_model}")
         tags: List[Tag] = macos_tags.get_all(crawl_event.path)
         for t in tags:
             path_model.tags[t.name] = t.color.name
-        logger.info(f"Done fetching file's labels from Finder: {path_model.full_path}")
+        logger.debug(f"Done fetching file's labels from Finder: {path_model.full_path}")
 
 # if __name__ == '__main__':
 #     filepath = '/Volumes/Data/Films/This Is England.avi'

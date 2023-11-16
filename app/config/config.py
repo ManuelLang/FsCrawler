@@ -15,7 +15,6 @@ from app.helpers.logging import InterceptHandler
 
 VERSION = "0.0.1"
 
-
 ENVIRONMENT: str = os.getenv("ENVIRONMENT", 'Dev').lower().strip()
 logging.info(f"ENVIRONMENT: {ENVIRONMENT}")
 
@@ -39,14 +38,12 @@ for config_file_name in config_file_names:
     config_tmp = Config(config_file_path)
     config.file_values.update(config_tmp.file_values)
 
-
 PROJECT_NAME: str = config("PROJECT_NAME", default="File crawler")
 ALLOWED_HOSTS: List[str] = config(
     "ALLOWED_HOSTS",
     cast=CommaSeparatedStrings,
     default="",
 )
-
 
 DEBUG: bool = config("DEBUG", cast=bool, default=False)
 
@@ -75,17 +72,29 @@ DRY_RUN: bool = config("DRY_RUN", cast=bool, default=True)
 DATE_TIME_PATTERN: str = config("DATE_TIME_PATTERN", default='%Y-%m-%dT%H:%M:%S')
 
 # logging configuration
+LOG_LEVEL_TRACE = 5
+LOG_LEVEL_DEBUG = 10
+LOG_LEVEL_INFO = 20
+LOG_LEVEL_SUCCESS = 25
+LOG_LEVEL_WARNING = 30
+LOG_LEVEL_ERROR = 40
+LOG_LEVEL_CRITICAL = 50
+
 LOG_LEVEL: str = config("LOG_LEVEL", default='warn')
-if DEBUG or 'debug' in LOG_LEVEL.lower():
-    LOGGING_LEVEL = logging.DEBUG
+if DEBUG or 'trace' in LOG_LEVEL.lower():
+    LOGGING_LEVEL = LOG_LEVEL_TRACE
+if 'debug' in LOG_LEVEL.lower():
+    LOGGING_LEVEL = LOG_LEVEL_DEBUG
 elif 'info' in LOG_LEVEL.lower():
-    LOGGING_LEVEL = logging.INFO
+    LOGGING_LEVEL = LOG_LEVEL_INFO
+elif 'success' in LOG_LEVEL.lower():
+    LOGGING_LEVEL = LOG_LEVEL_SUCCESS
 elif 'warn' in LOG_LEVEL.lower():
-    LOGGING_LEVEL = logging.WARNING
+    LOGGING_LEVEL = LOG_LEVEL_WARNING
 elif 'error' in LOG_LEVEL.lower():
-    LOGGING_LEVEL = logging.ERROR
+    LOGGING_LEVEL = LOG_LEVEL_ERROR
 else:
-    LOGGING_LEVEL = logging.FATAL
+    LOGGING_LEVEL = LOG_LEVEL_CRITICAL
 
 logging.basicConfig(filemode='w', format='%(asctime)s %(thread)d %(threadName)s %(name)s - %(levelname)s - %(message)s',
                     level=LOGGING_LEVEL)
@@ -117,6 +126,7 @@ logging.getLogger('requests').setLevel(logging.INFO if DEBUG else logging.ERROR)
 logging.getLogger('urllib3').setLevel(logging.INFO if DEBUG else logging.ERROR)
 logging.getLogger('botocore').setLevel(logging.INFO if DEBUG else logging.WARNING)
 
-QUEUE_MAX_SIZE: int = config("QUEUE_MAX_SIZE", default=100000)
-QUEUE_MIN_SIZE: int = config("QUEUE_MIN_SIZE", default=1000)
-QUEUE_WAIT_TIME: int = config("QUEUE_WAIT_TIME", cast=int, default=10)  # seconds to wait for queue to get new items when empty
+QUEUE_MAX_SIZE: int = config("QUEUE_MAX_SIZE", default=10000)
+QUEUE_MIN_SIZE: int = config("QUEUE_MIN_SIZE", default=100)
+QUEUE_WAIT_TIME: int = config("QUEUE_WAIT_TIME", cast=int,
+                              default=10)  # seconds to wait for queue to get new items when empty

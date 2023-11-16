@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `path`
 (
     `id`              int(11)       NOT NULL AUTO_INCREMENT,
     `path`            varchar(2000) NOT NULL UNIQUE,
-    `extension`       varchar(12)   NOT NULL,
+    `extension`       varchar(32)   NOT NULL,
     `name`            varchar(2000) NOT NULL,
     `owner`           varchar(255)           DEFAULT NULL,
     `group`           varchar(255)           DEFAULT NULL,

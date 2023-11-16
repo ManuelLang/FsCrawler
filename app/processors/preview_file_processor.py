@@ -26,7 +26,7 @@ class PreviewFileProcessor(IPathProcessor):
         return PathType.FILE
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
-        logger.info(f"Computing file's thumbnail: {path_model}")
+        logger.debug(f"Computing file's thumbnail: {path_model}")
         options = {
             'trim': False,
             'height': 300,

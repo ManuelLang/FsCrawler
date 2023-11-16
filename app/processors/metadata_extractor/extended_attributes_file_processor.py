@@ -24,7 +24,7 @@ class ExtendedAttributesFileProcessor(IPathProcessor):
         return PathType.FILE
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
-        logger.info(f"Fetching file's extended attributes: {path_model}")
+        logger.debug(f"Fetching file's extended attributes: {path_model}")
         path_model.reserved = crawl_event.path.is_reserved()
         path_model.mime_type = self.mime.from_file(crawl_event.path)
         path_model.content_family = PathModel.get_content_familiy_from_mime_type(mime_type=path_model.mime_type)
@@ -44,7 +44,7 @@ class ExtendedAttributesFileProcessor(IPathProcessor):
             path_model.system = lstat.st_file_attributes & stat.FILE_ATTRIBUTE_SYSTEM
             path_model.temporary = lstat.st_file_attributes & stat.FILE_ATTRIBUTE_TEMPORARY
 
-        logger.info(f"Done fetching file's extended attributes: {path_model.full_path}")
+        logger.debug(f"Done fetching file's extended attributes: {path_model.full_path}")
 
     @staticmethod
     def is_file_hidden(file_name: str, lstat):

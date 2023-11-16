@@ -24,7 +24,7 @@ class HashFileProcessor(IPathProcessor):
         return PathType.FILE
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
-        logger.info(f"Hashing file: {path_model}")
+        logger.debug(f"Hashing file: {path_model}")
         try:
             with open(path_model.full_path, 'rb') as f:
                 while True:
@@ -39,6 +39,6 @@ class HashFileProcessor(IPathProcessor):
                     setattr(path_model, property_name, hash_algo.hexdigest())
                 else:
                     logger.error(f"Hash algorithm not supported: {name}")
-            logger.info(f"Done hashing file {path_model.full_path}")
+            logger.debug(f"Done hashing file {path_model.full_path}")
         except Exception as ex:
             logger.error(f"Unable to hash file '{path_model.full_path}': {ex}")

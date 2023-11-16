@@ -13,7 +13,6 @@ import platform
 import psutil
 from loguru import logger
 
-
 root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_folder)
 
@@ -27,8 +26,11 @@ from app.observers.metrics_observer import MetricsObserver
 from app.observers.queue_observer import QueueObserver
 from app.processors.hash_file_processor import HashFileProcessor
 from app.processors.metadata_extractor.extended_attributes_file_processor import ExtendedAttributesFileProcessor
+from app.filters.extension_filter import ExtensionFilter
+
 if platform.system() == "Darwin":
     from app.processors.metadata_extractor.mac_finfer_tags_extractor import MacFinderTagsExtractorFileProcessor
+
 
 # TODO: list partitions, get their UUID and map them with the roots to be crawled
 # drps = psutil.disk_partitions()
@@ -44,7 +46,8 @@ if platform.system() == "Darwin":
 
 def main():
     roots: dict = {
-        '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/blah/Sauveguarde MacBookProActelion/test-desk/Audios/Grand Angle': '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/'  # Path, Root part from the mapped volume
+        '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/blah/Sauveguarde MacBookProActelion/': '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/'
+        # Path, Root part from the mapped volume
     }
     crawler = FileSystemCrawler(roots=roots)
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
@@ -68,23 +71,14 @@ def main():
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="node_modules/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="botocore/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="boto3/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".jar$"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".war$"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".terraform/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".terraformrc/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="package/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".class$"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="target/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="__pycache__"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".pyc$"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="mypy_boto3_builder/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".gradle/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".mvn/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".db$"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".dat$"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".bak$"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".log$"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".ibd"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".npm/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".nvm/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".npm-packages/"))
@@ -116,12 +110,15 @@ def main():
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".splunkrc/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".vnc/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/kubepug/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/open-zwave.git/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/Library/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/chromedriver/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/tmp/"))
     crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/tutorials/guest/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/navifycli_py3/"))
+    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".[0-9]+[_]?[a-z]*$"))
+    crawler.add_skip_filter(ExtensionFilter(excluded_extensions=[
+        "gitattributes", "uYlOfa", "sublime-project", "sqlite3", "log", "cpp_disabled_avr_specific", "tmp", "temp",
+        "dat", "bak", "db", "ibd", "pyc", "class", "jar", "war", "DS_Store"
+    ]))
 
     crawling_queue: Queue = Queue(maxsize=config.QUEUE_MAX_SIZE)
     # crawler.add_observer(LoggingObserver())
@@ -139,7 +136,7 @@ def main():
     if platform.system() == "Darwin":
         processors.append(MacFinderTagsExtractorFileProcessor())
 
-    data_manager: PathDataManager = PathDataManager()   # Providing the data manager will persist processed paths into DB
+    data_manager: PathDataManager = PathDataManager()  # Providing the data manager will persist processed paths into DB
     queue_consumer = CrawlingQueueConsumer(crawling_queue=crawling_queue,
                                            path_processors=processors,
                                            data_manager=data_manager,
@@ -155,9 +152,10 @@ def main():
     consumer_thread.join()
 
     crawl_duration = datetime.now() - crawler.start_time
-    logger.info(f"Crawled {len(crawler.files_processed)} files (total of {crawler.crawled_files_size:0.2f} Mb) "
-                f"in {crawl_duration} sec")
-    metricsObserver.print_statistics()
+    logger.warning(f"Crawled {len(crawler.files_processed)} files (total of {crawler.crawled_files_size:0.2f} Mb) "
+                   f"in {crawl_duration} sec")
+    # metricsObserver.print_statistics()
+
 
 # endregion
 

@@ -9,7 +9,7 @@ from typing import List, Dict
 
 from loguru import logger
 
-from config.config import config
+from config import config
 from crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
 from crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
 from crawler.events.crawlerEventArgs import CrawlerEventArgs
@@ -41,6 +41,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         self._errored_paths: Dict[str, str] = {}
         self.data_manager = data_manager
         self._force_refresh = update_existing_paths
+        self.paths_processed_count = 0
 
     @property
     def processed_files(self) -> List[FileModel]:
@@ -92,11 +93,17 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         for processor in self._path_processors:
             if processor.processor_type.name == path_model.path_type.name or processor.processor_type.name == PathType.ALL.name:
                 try:
+                    logger.info(f"\tRunning {processor.__class__.__name__}...")
                     processor.process_path(crawl_event=crawl_event, path_model=path_model)
                 except Exception as ex:
                     self._errored_paths[str(crawl_event.path)] = str(ex)
                     logger.error(f"Unable to process {path_model.path_type} '{path_model}' "
                                  f"({processor.__class__.__name__}): {ex}")
+        self.paths_processed_count += 1
+        if config.LOGGING_LEVEL > config.LOG_LEVEL_INFO and self.paths_processed_count % 10 == 0:
+            print(".", end="")  # Show progress indicator
+        if self.paths_processed_count % 3000 == 0:
+            print(f"\nProcessed {self.paths_processed_count} paths")
         if self.data_manager:
             self.data_manager.save_path(path_model=path_model)
             logger.info(f"Done saving path '{path_model.relative_path}' into DB")

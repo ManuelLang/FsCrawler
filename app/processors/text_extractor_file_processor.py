@@ -31,7 +31,7 @@ class TextExtractorFileProcessor(IPathProcessor):
         return PathType.FILE
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
-        logger.info(f"Extracting file's text: {path_model}")
+        logger.debug(f"Extracting file's text: {path_model}")
         text: str = ''
         try:
             if crawl_event.size_in_mb < self.max_size_in_mb:
