@@ -5,6 +5,7 @@ import os
 from abc import ABC
 from pathlib import Path
 from typing import Dict
+from loguru import logger
 
 from models.content import ContentFamily
 from models.path_stage import PathStage
@@ -36,32 +37,37 @@ class PathModel(ABC):
         if self.relative_path and len(self.relative_path) > 0 and self.relative_path[0] == '/':
             self.relative_path = self.relative_path[1:]
 
-        self.extension: str = ''
+        self.extension: str = None
         parts = self._full_path.split('/')
         parts.reverse()
         file_name = parts[0] if parts else None
         if file_name and '.' in file_name:
             file_parts = file_name.split('.')
             file_parts.reverse()
-            self.extension = file_parts[0]
+            self.extension = file_parts[0] if len(file_parts[0]) < 25 else None     # Handles files having no extension
         self.size_in_mb: int = size_in_mb
 
         if path.exists():
             self.name: str = path.stem
-            self.owner: str = path.owner()
-            self.group: str = path.group()
+            try:
+                self.owner: str = path.owner()
+                self.group: str = path.group()
+            except Exception as ex:
+                logger.info(f"Unable to get file ownership for {path}. Error: {ex}")
+                self.owner: str = None
+                self.group: str = None
             self.root: str = path.root
             self.drive: str = path.drive
             self.status = 'CURRENT'
         else:
-            self.name: str = ''
-            self.owner: str = ''
-            self.group: str = ''
-            self.root: str = ''
-            self.drive: str = ''
+            self.name: str = None
+            self.owner: str = None
+            self.group: str = None
+            self.root: str = None
+            self.drive: str = None
             self.status = 'DELETED'
-        self.hash_md5: str = ''
-        self.hash_sha256: str = ''
+        self.hash_md5: str = None
+        self.hash_sha256: str = None
         self.is_windows_path: bool = False
         self.hidden: bool = False
         self.archive: bool = False
@@ -71,8 +77,8 @@ class PathModel(ABC):
         self.readonly: bool = False
         self.system: bool = False
         self.temporary: bool = False
-        self.content_family: str = ''
-        self.mime_type: str = ''
+        self.content_family: str = None
+        self.mime_type: str = None
         self.path_stage: PathStage = PathStage.CRAWLED  # if an instance of path is created, it means it was crawled
         self._tags: Dict[str, str] = {}  # For finder tags: <Label_Name, Color_name>
 

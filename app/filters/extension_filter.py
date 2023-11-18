@@ -25,7 +25,8 @@ class ExtensionFilter(Filter):
             return False
 
         if self.excluded_extensions:
-            if path.suffix in self.excluded_extensions:
+            extension = path.suffix[1:] if path.suffix.startswith('.') else path.suffix
+            if path.suffix in self.excluded_extensions or path.suffix != extension and extension in self.excluded_extensions:
                 logger.debug(f"Skipping path {path}: excluded by extensions {self.excluded_extensions}")
                 return False
 

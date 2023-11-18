@@ -288,14 +288,19 @@ class FileSystemCrawler(ICrawler):
     # endregion
 
     def start(self):
-        logger.info("Crawling is starting...")
+        logger.success("Crawling is starting...")
         self._start_time = datetime.now()
         if not self.roots:
             logger.warning("No root location found to be crawled!")
             return
 
         total_roots = len(self.roots)
-        logger.info(f"Found {total_roots} root paths to be crawled. Starting...")
+        logger.info(f"Found {total_roots} root paths to be crawled:")
+        logger.info(self.roots)
+        logger.info("Filters applied:")
+        for f in self.skip_filters:
+            logger.info(f)
+        logger.info("Start browsing files...")
         self.notify_crawl_starting(crawl_event=CrawlStartingEventArgs(crawler=self))
 
         try:
@@ -306,7 +311,7 @@ class FileSystemCrawler(ICrawler):
 
             for path, root_dir in self._paths_to_crawl.items():
                 path_size_in_mb, files_in_directory = self.crawl_path(path, root_dir)
-                logger.info(f"Crawled path '{path}' [{path_size_in_mb:0.2f} Mb / {files_in_directory} files]")
+                logger.success(f"Crawled path '{path}' [{path_size_in_mb:0.2f} Mb / {files_in_directory} files]")
         except Exception as ex:
             logger.error(ex)
             self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex))
@@ -314,7 +319,7 @@ class FileSystemCrawler(ICrawler):
         self._end_time = datetime.now()
         self.duration = self._end_time - self._start_time
         nb_dir_skipped = len(self._paths_skipped) - self._ignored_files
-        logger.info(f"Found {len(self._crawled_paths)} paths (total of {self._crawled_files_size:0.2f} Mb) "
+        logger.success(f"Found {len(self._crawled_paths)} paths (total of {self._crawled_files_size:0.2f} Mb) "
                     f"in {self.duration} sec\n"
                     f"\t- {len(self._directories_processed)} directories\n"
                     f"\t- {len(self._files_processed)} files processed (total of {self._processed_files_size:0.2f} Mb)\n"

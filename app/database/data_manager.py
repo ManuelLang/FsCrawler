@@ -177,7 +177,7 @@ class PathDataManager:
                             f'files_in_dir=VALUES(files_in_dir), date_updated=sysdate()'
         try:
             params = (path_model.full_path, path_model.extension, path_model.name, path_model.owner,
-                      path_model.group, path_model.root, path_model.drive, path_model.size_in_mb,
+                      path_model.group, path_model.path_root, path_model.drive, path_model.size_in_mb,
                       path_model.hash_md5, path_model.hash_sha256, path_model.is_windows_path,
                       path_model.hidden, path_model.archive, path_model.compressed,
                       path_model.encrypted, path_model.offline, path_model.readonly,

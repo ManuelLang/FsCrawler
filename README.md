@@ -59,7 +59,7 @@ pip3 install -r requirements.txt
 #### Spin up database
 
 ```bash
-sudo mkdir -p /var/lib/mysql/
+sudo mkdir -p /media/sa-nas/docker_vol_db/maria_db/fs_crawler/
 cd docker/
 docker-compose up -d
 ``` 

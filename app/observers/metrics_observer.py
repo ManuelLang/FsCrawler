@@ -106,9 +106,11 @@ class MetricsObserver(ICrawlerObserver):
         self._directories_sizes[crawl_event.size_in_mb] = str(crawl_event.path)
 
     def crawl_stopped(self, crawl_event: CrawlStoppedEventArgs):
+        logger.warning("crawl_stopped")
         self.print_statistics()
 
     def crawl_completed(self, crawl_event: CrawlCompletedEventArgs):
+        logger.success("crawl_completed")
         self.print_statistics()
 
     def crawl_starting(self, crawl_event: CrawlStartingEventArgs):

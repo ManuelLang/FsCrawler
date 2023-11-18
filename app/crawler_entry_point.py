@@ -13,6 +13,7 @@ import platform
 import psutil
 from loguru import logger
 
+
 root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_folder)
 
@@ -27,7 +28,7 @@ from app.observers.queue_observer import QueueObserver
 from app.processors.hash_file_processor import HashFileProcessor
 from app.processors.metadata_extractor.extended_attributes_file_processor import ExtendedAttributesFileProcessor
 from app.filters.extension_filter import ExtensionFilter
-
+from app.filters.path_regex_pattern_filter import RegexPatternFilter
 if platform.system() == "Darwin":
     from app.processors.metadata_extractor.mac_finfer_tags_extractor import MacFinderTagsExtractorFileProcessor
 
@@ -46,78 +47,33 @@ if platform.system() == "Darwin":
 
 def main():
     roots: dict = {
-        '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/blah/Sauveguarde MacBookProActelion/': '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/'
+        '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/Test/': '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/'
         # Path, Root part from the mapped volume
     }
     crawler = FileSystemCrawler(roots=roots)
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".DS_Store"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".AppleDouble"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".LSOverride"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".idea/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".Trashes"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="out/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".idea_modules/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="build/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="dist/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="lib/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/venv"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".pyenv/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/env/lib/python"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/python2.7/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/bin/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/.git/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".git/objects"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="@angular*"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="node_modules/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="botocore/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="boto3/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".terraform/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".terraformrc/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="package/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="target/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="__pycache__"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="mypy_boto3_builder/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".gradle/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".mvn/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".npm/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".nvm/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".npm-packages/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".node-gyp/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".node_repl_history"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".m2/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".plugins/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".cache/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".docker/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="dockervolumes/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/jenkins/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="testcontainers.properties"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".eclipse/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".Trash/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".krew/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="kube/cache/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="kube/http-cache/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".android/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".bash_sessions/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".sqldeveloper/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/Quarantine/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".atom/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".oracle_jre_usage/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".poetry/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".psql_history/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".pylint.d/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".rnd/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".splunk/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".splunkrc/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".vnc/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/kubepug/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/Library/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/chromedriver/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/tmp/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern="/tutorials/guest/"))
-    crawler.add_skip_filter(PatternFilter(excluded_path_pattern=".[0-9]+[_]?[a-z]*$"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".*\.ino$"))
+    directories_to_skip: List[str] = [".idea", ".Trashes", "out", ".idea_modules", "build", "dist", "lib", "venv.*",
+                                      ".pyenv", "python[0-9]\.[0-9]", "bin", ".git", "@angular.*", "node_modules",
+                                      "botocore", "boto3", ".terraform", ".terraformrc", "package", "target",
+                                      "__pycache__", "mypy_boto3_builder", ".gradle", ".mvn", ".npm", ".nvm",
+                                      ".npm-packages", ".node-gyp", ".node_repl_history", ".m2", ".plugins", ".cache",
+                                      ".docker", "dockervolumes", "jenkins", ".eclipse", ".Trash", ".krew", "kube",
+                                      ".android", ".bash_sessions", ".sqldeveloper", "Quarantine", ".atom",
+                                      ".oracle_jre_usage", ".poetry", ".psql_history", ".pylint.d", ".rnd", ".vnc",
+                                      "kubepug", "Library", "chromedriver", "tmp", "tutorials\/guest"]
+    for skip_dir in directories_to_skip:
+        if skip_dir:
+            crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=f"\/{skip_dir}\/"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern="testcontainers.properties"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".com.google.Chrome"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".[0-9]+[_]?[a-z]*$"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".*~$"))
     crawler.add_skip_filter(ExtensionFilter(excluded_extensions=[
         "gitattributes", "uYlOfa", "sublime-project", "sqlite3", "log", "cpp_disabled_avr_specific", "tmp", "temp",
-        "dat", "bak", "db", "ibd", "pyc", "class", "jar", "war", "DS_Store"
+        "dat", "bak", "db", "ibd", "pyc", "class", "jar", "war", "DS_Store", "AppleDouble", "LSOverride", "tab", "so",
+        "__styleext__", "APACHE2", "apk", "appcache", "attic", "babelrc", "before", "bin", "bnf", "BSD", "cache",
+        "clonedeep", "debounce", "def", "delivery", "disabled", "dist", "dist - info", "dmg", "editorconfig",
+        "gitmodules", "lock", "pyc", "sample", "map"
     ]))
 
     crawling_queue: Queue = Queue(maxsize=config.QUEUE_MAX_SIZE)
@@ -152,9 +108,13 @@ def main():
     consumer_thread.join()
 
     crawl_duration = datetime.now() - crawler.start_time
-    logger.warning(f"Crawled {len(crawler.files_processed)} files (total of {crawler.crawled_files_size:0.2f} Mb) "
+
+    processed_gb = crawler.crawled_files_size / 1024 \
+        if crawler.crawled_files_size and crawler.crawled_files_size > 1024 \
+        else 0
+    logger.warning(f"Crawled {len(crawler.files_processed)} files (total of {processed_gb:0.2f} Gb) "
                    f"in {crawl_duration} sec")
-    # metricsObserver.print_statistics()
+    metricsObserver.print_statistics()
 
 
 # endregion

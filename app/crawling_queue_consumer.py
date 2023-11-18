@@ -41,7 +41,8 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         self._errored_paths: Dict[str, str] = {}
         self.data_manager = data_manager
         self._force_refresh = update_existing_paths
-        self.paths_processed_count = 0
+        self.processed_paths_count = 0
+        self.processed_files_size = 0
 
     @property
     def processed_files(self) -> List[FileModel]:
@@ -85,7 +86,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         return item
 
     def _process_path(self, crawl_event: PathEventArgs, path_model: PathModel) -> PathModel:
-        logger.info(f"Processing {path_model.path_type.name} '{crawl_event.path}'...")
+        logger.debug(f"Processing {path_model.path_type.name} '{crawl_event.path}'...")
         if not self._force_refresh and self.data_manager \
                 and self.data_manager.path_exists(path=path_model.full_path):
             logger.debug(f"Path already saved into DB: '{path_model.full_path}'. Skipping")
@@ -93,17 +94,21 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         for processor in self._path_processors:
             if processor.processor_type.name == path_model.path_type.name or processor.processor_type.name == PathType.ALL.name:
                 try:
-                    logger.info(f"\tRunning {processor.__class__.__name__}...")
+                    logger.debug(f"\tRunning {processor.__class__.__name__}...")
                     processor.process_path(crawl_event=crawl_event, path_model=path_model)
                 except Exception as ex:
                     self._errored_paths[str(crawl_event.path)] = str(ex)
                     logger.error(f"Unable to process {path_model.path_type} '{path_model}' "
                                  f"({processor.__class__.__name__}): {ex}")
-        self.paths_processed_count += 1
-        if config.LOGGING_LEVEL > config.LOG_LEVEL_INFO and self.paths_processed_count % 10 == 0:
+        self.processed_paths_count += 1
+        self.processed_files_size += crawl_event.size_in_mb
+        if config.LOGGING_LEVEL > config.LOG_LEVEL_INFO and self.processed_paths_count % 10 == 0:
             print(".", end="")  # Show progress indicator
-        if self.paths_processed_count % 3000 == 0:
-            print(f"\nProcessed {self.paths_processed_count} paths")
+        if self.processed_paths_count % 1000 == 0:
+            processed_gb = self.processed_files_size / 1024 \
+                if self.processed_files_size and self.processed_files_size > 1024 \
+                else 0
+            print(f"\nProcessed {self.processed_paths_count} paths ({processed_gb:0.2f} Gb)")
         if self.data_manager:
             self.data_manager.save_path(path_model=path_model)
             logger.info(f"Done saving path '{path_model.relative_path}' into DB")
@@ -151,7 +156,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
                             self._processed_directories.append(path_model)
                         lock.release()
                     except Exception as exc:
-                        print(f"Error while processing path '{crawl_event.path}': {exc}")
+                        logger.error(f"Error while processing path '{crawl_event.path}': {exc}", exc)
 
         self._in_progress = False
         logger.info(f"Processed {len(self.processed_files)} files")
