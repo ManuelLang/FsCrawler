@@ -1,5 +1,10 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
+if __name__ == '__main__':
+    import sys, os
+    root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.append(root_folder)
+
 import json
 import logging
 from contextlib import contextmanager
@@ -8,11 +13,11 @@ from typing import List, Dict
 import mysql.connector as database
 from loguru import logger
 
-from config import config
-from models.directory import DirectoryModel
-from models.file import FileModel
-from models.path import PathModel
-from models.path_type import PathType
+from app.config import config
+from app.models.directory import DirectoryModel
+from app.models.file import FileModel
+from app.models.path import PathModel
+from app.models.path_type import PathType
 
 
 class PathDataManager:
@@ -21,59 +26,65 @@ class PathDataManager:
         super().__init__()
         try:
             logger.info(f"Connecting to DB {config.DATABASE_HOST}:{config.DATABASE_PORT}/{config.DATABASE_NAME}...")
-            self.connection = database.connect(
-                user=config.DATABASE_USER,
-                password=config.DATABASE_PASSWORD,
-                host=config.DATABASE_HOST,
-                port=config.DATABASE_PORT,
-                database=config.DATABASE_NAME
-            )
-            logger.success(f"Connected to DB!")
+            with self.cursor():
+                logger.success(f"Connected to DB!")
         except Exception as ex:
             logger.error(f"Unable to login to DB {config.DATABASE_HOST}:{config.DATABASE_PORT}/{config.DATABASE_NAME}: {ex}")
 
     @contextmanager
     def cursor(self, *args, **kwargs):
-        cursor = self.connection.cursor(buffered=True, *args, **kwargs)
+        connection = database.connect(
+            user=config.DATABASE_USER,
+            password=config.DATABASE_PASSWORD,
+            host=config.DATABASE_HOST,
+            port=config.DATABASE_PORT,
+            database=config.DATABASE_NAME
+        )
+        cursor = connection.cursor(buffered=True, *args, **kwargs)
         try:
             yield cursor
         finally:
             try:
-                if self.connection:
-                    self.connection.commit()
+                if connection:
+                    connection.commit()
                 if cursor:
                     cursor.close()
             except Exception as ex:
                 logger.error(ex)
-                if self.connection:
-                    self.connection.rollback()
+                if connection:
+                    connection.rollback()
                 if cursor:
                     cursor.close()
 
-    def __del__(self):
-        try:
-            self.connection.commit()
-        except Exception as ex:
-            logger.error(f"Error while committing DB transaction: {ex}")
-        finally:
-            self.connection.close()
+    # def __del__(self):
+    #     try:
+    #         self.connection.commit()
+    #     except Exception as ex:
+    #         logger.error(f"Error while committing DB transaction: {ex}")
+    #     finally:
+    #         self.connection.close()
 
     def path_exists(self, path: str) -> bool:
         path: PathModel = self.get_path(path=path)
         return path is not None
 
-    def _find_paths(self, where_clause: str, offset: int = 0, limit: int = 20) -> List[PathModel]:
+    def _find_paths(self, column: str, operator: str, value, offset: int = 0, limit: int = 20) -> List[PathModel]:
         sql_statement: str = f'SELECT id, `path`, extension, name, owner, `group`, root, drive, size_in_mb, ' \
                              f'hash_md5, hash_sha256, is_windows_path, hidden, archive, compressed, encrypted, ' \
                              f'offline, readonly, `system`, `temporary`, content_family, mime_type, path_type, ' \
                              f'path_stage, date_created, date_updated ' \
                              f'FROM `path` ' \
-                             f'WHERE %s ' \
+                             f"WHERE {column} {operator} %s " \
                              f'LIMIT %s OFFSET %s'
+        if isinstance(value, str):
+            value = value.replace("'", "\'")
+        args = [value, limit, offset]
         path_list: List[PathModel] = []
         try:
             with self.cursor() as cur:
-                cur.execute(sql_statement, [where_clause, limit, offset])
+                logger.debug(sql_statement)
+                logger.debug(args)
+                cur.execute(sql_statement, args)
                 rows = cur.fetchall()
                 if not rows:
                     return path_list
@@ -115,33 +126,35 @@ class PathDataManager:
             logging.info(f"Fetched {len(path_list)} paths")
             return path_list
         except Exception as ex:
-            logger.error(f"_find_paths - Unable to execute SQL command:\n{sql_statement}\nError: {ex}\nwhere_clause: '{where_clause}'")
+            logger.error(f"_find_paths - Unable to execute SQL command:\n{sql_statement}\nError: {ex}\nwhere_clause: '{column} {operator} {value}'")
             return path_list
 
-    def _get_path_by(self, where_clause: str) -> PathModel:
-        path_list: List[PathModel] = self._find_paths(where_clause=where_clause)
+    def _get_path_by(self, column: str, operator: str, value) -> PathModel:
+        path_list: List[PathModel] = self._find_paths(column=column, operator=operator, value=value)
         if len(path_list) > 1:
-            raise ValueError(f"_get_path_by - More than one path found for where clause '{where_clause}'")
+            raise ValueError(f"_get_path_by - More than one path found for where clause '{column} {operator} {value}'")
         elif len(path_list) == 0:
             return None
         else:
             return path_list[0]
 
     def get_path(self, path: str) -> PathModel:
-        return self._get_path_by(where_clause=f"`path` = {path}")
+        return self._get_path_by(column='path', operator='=', value=path)
 
     def find_paths_by_md5_hash(self, md5_hash: str) -> PathModel:
-        return self._find_paths(where_clause=f"`hash_md5` = {md5_hash}")
+        return self._find_paths(column='hash_md5', operator='=', value=md5_hash)
 
     def find_paths_by_sha256_hash(self, sha256_hash: str) -> PathModel:
-        return self._find_paths(where_clause=f"`hash_sha256` = {sha256_hash}")
+        return self._find_paths(column='hash_sha256', operator='=', value=sha256_hash)
 
-    def find_duplicates(self) -> Dict[str, List[str]]:
-        sql_statement: str = ('SELECT size_in_mb, hash_md5, COUNT(1)'
-                              'FROM `path`'
-                              'GROUP BY size_in_mb, hash_md5'
-                              'HAVING COUNT(1) > 1')
-        result: Dict[(int, str, int), List[str]] = {}
+    def find_duplicates(self) -> Dict[str, List]:
+        sql_statement: str = ('Select p.size_in_mb, p.hash_md5, p.`path` '
+                              'FROM `path` p '
+                              'Inner Join `path` p1 on p.size_in_mb = p1.size_in_mb '
+                              ' AND p.hash_md5 = p1.hash_md5 AND p.`path` <> p1.`path` '
+                              'Where p.hash_md5 <> '' AND p.hash_md5 IS NOT NULL '
+                              'Order By p.size_in_mb DESC, p.hash_md5, p.`path`')
+        result: Dict[str, List] = {}
         try:
             with self.cursor() as cur:
                 cur.execute(sql_statement)
@@ -149,13 +162,11 @@ class PathDataManager:
                 if not rows:
                     return result
                 for row in rows:
-                    result[(row[0], row[1], row[2])] = []
-
-            # Now fetch paths details for each duplicate
-            for key, value in result:
-                size, md5_hash, nb = key
-                value.append(self.find_paths_by_md5_hash(md5_hash))
-
+                    size = row[0]
+                    hash = row[1]
+                    path = row[2]
+                    values = result.get(hash, [])
+                    values.append((path, size))
         except Exception as ex:
             logger.error(f"find_duplicates - Unable to execute SQL command:\n{sql_statement}\nError: {ex}")
         return result
@@ -174,7 +185,7 @@ class PathDataManager:
                              f'readonly=VALUES(readonly), `system`=VALUES(`system`), `temporary`=VALUES(`temporary`), ' \
                              f'content_family=VALUES(content_family), mime_type=VALUES(mime_type), ' \
                              f'path_type=VALUES(path_type), path_stage=VALUES(path_stage), tags=VALUES(tags), ' \
-                            f'files_in_dir=VALUES(files_in_dir), date_updated=sysdate()'
+                             f'files_in_dir=VALUES(files_in_dir), date_updated=sysdate()'
         try:
             params = (path_model.full_path, path_model.extension, path_model.name, path_model.owner,
                       path_model.group, path_model.path_root, path_model.drive, path_model.size_in_mb,
@@ -193,6 +204,9 @@ class PathDataManager:
             logger.error(
                 f"Unable to execute SQL command:\n{sql_statement}\nError: {ex}\nPath: '{path_model.relative_path if path_model else 'None'}'")
 
+
 # if __name__ == '__main__':
-#     adm = AmiDataManager()
-#     adm.save_path()
+#     pdm = PathDataManager()
+#     # res = pdm._find_paths()
+#     res = pdm.get_path(path='/media/s....jpg')
+#     print(res)

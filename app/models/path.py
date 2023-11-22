@@ -6,6 +6,7 @@ from abc import ABC
 from pathlib import Path
 from typing import Dict
 from loguru import logger
+import re
 
 from models.content import ContentFamily
 from models.path_stage import PathStage
@@ -13,6 +14,7 @@ from models.path_type import PathType
 
 
 class PathModel(ABC):
+    FILE_EXTENSION_PATTERN = re.compile("[a-z0-9_]{2,12}", re.IGNORECASE)
 
     @classmethod
     def __subclasshook__(cls, subclass):
@@ -37,14 +39,7 @@ class PathModel(ABC):
         if self.relative_path and len(self.relative_path) > 0 and self.relative_path[0] == '/':
             self.relative_path = self.relative_path[1:]
 
-        self.extension: str = None
-        parts = self._full_path.split('/')
-        parts.reverse()
-        file_name = parts[0] if parts else None
-        if file_name and '.' in file_name:
-            file_parts = file_name.split('.')
-            file_parts.reverse()
-            self.extension = file_parts[0] if len(file_parts[0]) < 25 else None     # Handles files having no extension
+        self.extension: str = self.get_extension(self.path)
         self.size_in_mb: int = size_in_mb
 
         if path.exists():
@@ -53,7 +48,7 @@ class PathModel(ABC):
                 self.owner: str = path.owner()
                 self.group: str = path.group()
             except Exception as ex:
-                logger.info(f"Unable to get file ownership for {path}. Error: {ex}")
+                logger.debug(f"Unable to get file ownership for {path}. Error: {ex}")
                 self.owner: str = None
                 self.group: str = None
             self.root: str = path.root
@@ -81,6 +76,29 @@ class PathModel(ABC):
         self.mime_type: str = None
         self.path_stage: PathStage = PathStage.CRAWLED  # if an instance of path is created, it means it was crawled
         self._tags: Dict[str, str] = {}  # For finder tags: <Label_Name, Color_name>
+
+    def get_extension(self, path: Path) -> str | None:
+        if not path or not path.is_file():
+            return None
+        extension = None
+        parts = self._full_path.split('/')
+        parts.reverse()
+        file_name = parts[0] if parts else None
+        if file_name and '.' in file_name:
+            file_parts = file_name.split('.')
+            file_parts.reverse()
+            last_part = str(file_parts[0])
+            if last_part:
+                word_array = re.split('[^a-zA-Z0-9_]', last_part)
+                last_part = str(word_array[0]).lower() if word_array else None
+            extension = last_part.lower() \
+                if last_part and PathModel.FILE_EXTENSION_PATTERN.match(last_part) \
+                else None     # Handles files having no extension
+        if not extension:
+            extension = path.suffix
+        if extension and not extension.startswith('.'):
+            extension = f".{extension}"
+        return extension
 
     @property
     def path_type(self) -> PathType:

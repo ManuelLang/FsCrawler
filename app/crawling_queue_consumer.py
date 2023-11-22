@@ -29,6 +29,13 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
 
     def __init__(self, crawling_queue: Queue, path_processors: List[IPathProcessor] = [],
                  data_manager: PathDataManager = None, update_existing_paths: bool = False) -> None:
+        """
+
+        :param crawling_queue:
+        :param path_processors:
+        :param data_manager:
+        :param update_existing_paths: if
+        """
         super().__init__()
         if crawling_queue is None:
             raise ValueError("Please provide a Queue")
@@ -43,6 +50,8 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         self._force_refresh = update_existing_paths
         self.processed_paths_count = 0
         self.processed_files_size = 0
+        self.lock = Lock()
+        self.nb_running_threads: int = 0
 
     @property
     def processed_files(self) -> List[FileModel]:
@@ -86,40 +95,59 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         return item
 
     def _process_path(self, crawl_event: PathEventArgs, path_model: PathModel) -> PathModel:
-        logger.debug(f"Processing {path_model.path_type.name} '{crawl_event.path}'...")
-        if not self._force_refresh and self.data_manager \
-                and self.data_manager.path_exists(path=path_model.full_path):
-            logger.debug(f"Path already saved into DB: '{path_model.full_path}'. Skipping")
-            return path_model
-        for processor in self._path_processors:
-            if processor.processor_type.name == path_model.path_type.name or processor.processor_type.name == PathType.ALL.name:
-                try:
-                    logger.debug(f"\tRunning {processor.__class__.__name__}...")
-                    processor.process_path(crawl_event=crawl_event, path_model=path_model)
-                except Exception as ex:
-                    self._errored_paths[str(crawl_event.path)] = str(ex)
-                    logger.error(f"Unable to process {path_model.path_type} '{path_model}' "
-                                 f"({processor.__class__.__name__}): {ex}")
-        self.processed_paths_count += 1
-        self.processed_files_size += crawl_event.size_in_mb
-        if config.LOGGING_LEVEL > config.LOG_LEVEL_INFO and self.processed_paths_count % 10 == 0:
-            print(".", end="")  # Show progress indicator
-        if self.processed_paths_count % 1000 == 0:
-            processed_gb = self.processed_files_size / 1024 \
-                if self.processed_files_size and self.processed_files_size > 1024 \
-                else 0
-            print(f"\nProcessed {self.processed_paths_count} paths ({processed_gb:0.2f} Gb)")
-        if self.data_manager:
-            self.data_manager.save_path(path_model=path_model)
-            logger.info(f"Done saving path '{path_model.relative_path}' into DB")
-        else:
-            logger.debug(f"Path not saved in DB (data_manager is None): {path_model.relative_path}")
+        try:
+            self.lock.acquire(blocking=True)
+            self.nb_running_threads += 1
+            self.lock.release()
+            logger.debug(f"Processing {path_model.path_type.name} '{crawl_event.path}'... ({self.nb_running_threads} running tasks)")
+
+            path_need_update: bool = True
+            if not self._force_refresh and self.data_manager:
+                self.lock.acquire(blocking=True)
+                path: PathModel = self.data_manager.get_path(path=path_model.full_path)
+                self.lock.release()
+                if path and float(path.size_in_mb) == float(path_model.size_in_mb):
+                    path_need_update = False    # Path exists and size still the same: nothing has changed
+                    logger.debug(f"Path already saved into DB: '{path_model.full_path}'. Skipping")
+            if path_need_update:
+                for processor in self._path_processors:
+                    if processor.processor_type.name == path_model.path_type.name or processor.processor_type.name == PathType.ALL.name:
+                        try:
+                            logger.debug(f"\tRunning {processor.__class__.__name__}...")
+                            processor.process_path(crawl_event=crawl_event, path_model=path_model)
+                        except Exception as ex:
+                            self._errored_paths[str(crawl_event.path)] = str(ex)
+                            logger.error(f"Unable to process {path_model.path_type} '{path_model}' "
+                                         f"({processor.__class__.__name__}): {ex}")
+                self.processed_paths_count += 1
+                self.processed_files_size += crawl_event.size_in_mb
+                if config.LOGGING_LEVEL > config.LOG_LEVEL_INFO and self.processed_paths_count % 10 == 0:
+                    print(".", end="")  # Show progress indicator
+                if self.processed_paths_count % 1000 == 0:
+                    processed_gb = self.processed_files_size / 1024 \
+                        if self.processed_files_size and self.processed_files_size > 1024 \
+                        else 0
+                    print(f"\nProcessed {self.processed_paths_count} paths ({processed_gb:0.2f} Gb)")
+                if self.data_manager:
+                    self.data_manager.save_path(path_model=path_model)
+                    logger.info(f"Done saving path '{path_model.relative_path}' into DB")
+                else:
+                    logger.debug(f"Path not saved in DB (data_manager is None): {path_model.relative_path}")
+            self.lock.acquire(blocking=True)
+            if path_model.path_type == PathType.FILE:
+                self.processed_files.append(path_model)
+            else:
+                self._processed_directories.append(path_model)
+            self.nb_running_threads -= 1
+            self.lock.release()
+        except Exception as exc:
+            logger.error(f"Error while processing path '{crawl_event.path}': {exc}", exc)
         return path_model
 
     def start(self):
         self._in_progress = True
-        lock = Lock()
-        with ThreadPoolExecutor(max_workers=50) as executor:
+        futures = []
+        with ThreadPoolExecutor(max_workers=4) as executor:
             while True:
                 if self._should_stop:
                     logger.error(f"Stopping current session...")
@@ -133,30 +161,51 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
                     self._should_stop = True
                     break
 
-                if crawl_event.__class__.__name__ == FileCrawledEventArgs.__name__:
-                    path_model: PathModel = FileModel(root=crawl_event.root_dir_path, path=crawl_event.path,
-                                                      size_in_mb=crawl_event.size_in_mb)
-                elif crawl_event.__class__.__name__ == DirectoryCrawledEventArgs.__name__:
-                    path_model: PathModel = DirectoryModel(root=crawl_event.root_dir_path, path=crawl_event.path,
-                                                           size_in_mb=crawl_event.size_in_mb,
-                                                           files_in_dir=crawl_event.files_in_dir)
-                else:
+                # if crawl_event.__class__.__name__ == FileCrawledEventArgs.__name__:
+                #     path_model: PathModel = FileModel(root=crawl_event.root_dir_path, path=crawl_event.path,
+                #                                       size_in_mb=crawl_event.size_in_mb)
+                # elif crawl_event.__class__.__name__ == DirectoryCrawledEventArgs.__name__:
+                #     path_model: PathModel = DirectoryModel(root=crawl_event.root_dir_path, path=crawl_event.path,
+                #                                            size_in_mb=crawl_event.size_in_mb,
+                #                                            files_in_dir=crawl_event.files_in_dir)
+                # else:
+                #     logger.debug(f"Not a crawled path event: {crawl_event.__class__.__name__}")
+                #     continue
+
+                if crawl_event.__class__.__name__ != FileCrawledEventArgs.__name__ and crawl_event.__class__.__name__ != DirectoryCrawledEventArgs.__name__:
                     logger.debug(f"Not a crawled path event: {crawl_event.__class__.__name__}")
                     continue
+                path_model = crawl_event.path_model
+                futures.append(executor.submit(self._process_path, crawl_event, path_model))
+                # executor.submit(self._process_path, crawl_event, path_model)
 
-                futures = [executor.submit(self._process_path, crawl_event, path_model)]
+            # for future in as_completed(futures):
+            #     try:
+            #         path_model = future.result()
+            #         self.lock.acquire(blocking=True)
+            #         if path_model.path_type == PathType.FILE:
+            #             self.processed_files.append(path_model)
+            #         else:
+            #             self._processed_directories.append(path_model)
+            #         self.lock.release()
+            #     except Exception as exc:
+            #         logger.error(f"Error while processing path '{crawl_event.path}': {exc}", exc)
 
-                for future in as_completed(futures):
-                    try:
-                        path_model = future.result()
-                        lock.acquire(blocking=True)
-                        if path_model.path_type == PathType.FILE:
-                            self.processed_files.append(path_model)
-                        else:
-                            self._processed_directories.append(path_model)
-                        lock.release()
-                    except Exception as exc:
-                        logger.error(f"Error while processing path '{crawl_event.path}': {exc}", exc)
-
+            # Wait for all the tasks to complete
+            running: bool = True
+            while running:
+                completed = 0
+                size = 0
+                for _ in as_completed(futures):
+                    completed += 1
+                    size = len(futures) - completed
+                    if size % 91 == 0:
+                        logger.info(f'About {size} tasks remain')
+                    if size % 1000 == 0:
+                        logger.success(f'About {size} tasks remain')
+                self.lock.acquire(blocking=True)
+                running = self.nb_running_threads > 0 or size > 0
+                self.lock.release()
+                time.sleep(5)
         self._in_progress = False
         logger.info(f"Processed {len(self.processed_files)} files")

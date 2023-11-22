@@ -10,9 +10,7 @@ from queue import Queue
 from typing import List
 import platform
 
-import psutil
 from loguru import logger
-
 
 root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_folder)
@@ -60,14 +58,19 @@ def main():
                                       ".docker", "dockervolumes", "jenkins", ".eclipse", ".Trash", ".krew", "kube",
                                       ".android", ".bash_sessions", ".sqldeveloper", "Quarantine", ".atom",
                                       ".oracle_jre_usage", ".poetry", ".psql_history", ".pylint.d", ".rnd", ".vnc",
-                                      "kubepug", "Library", "chromedriver", "tmp", "tutorials\/guest"]
+                                      "kubepug", "Library", "chromedriver", "tmp", "tutorials\/guest", "@eaDir"]
     for skip_dir in directories_to_skip:
         if skip_dir:
             crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=f"\/{skip_dir}\/"))
     crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern="testcontainers.properties"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern="Thumbs.db"))
     crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".com.google.Chrome"))
-    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".[0-9]+[_]?[a-z]*$"))
     crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".*~$"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern="^~.*"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".*\.[!]?bt$"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".*@SynoEAStream$"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".*\.[r]?[0-9]{2}"))
+    crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern="_____padding_file_"))
     crawler.add_skip_filter(ExtensionFilter(excluded_extensions=[
         "gitattributes", "uYlOfa", "sublime-project", "sqlite3", "log", "cpp_disabled_avr_specific", "tmp", "temp",
         "dat", "bak", "db", "ibd", "pyc", "class", "jar", "war", "DS_Store", "AppleDouble", "LSOverride", "tab", "so",

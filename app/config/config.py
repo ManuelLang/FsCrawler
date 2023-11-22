@@ -42,7 +42,7 @@ PROJECT_NAME: str = config("PROJECT_NAME", default="File crawler")
 ALLOWED_HOSTS: List[str] = config(
     "ALLOWED_HOSTS",
     cast=CommaSeparatedStrings,
-    default="",
+    default=[],
 )
 
 DEBUG: bool = config("DEBUG", cast=bool, default=False)

@@ -14,6 +14,7 @@ class DirectoryCrawledEventArgs(PathEventArgs):
         super().__init__(crawler=crawler, path=path, is_dir=True, is_file=False, size_in_mb=size_in_mb,
                          root_dir_path=root_dir_path)
         self.files_in_dir: int = files_in_dir
+        self.path_model.files_in_dir = self.files_in_dir
 
     def __str__(self) -> str:
         return JsonDumper.dumps(self.__dict__)
