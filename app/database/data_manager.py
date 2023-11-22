@@ -70,7 +70,7 @@ class PathDataManager:
 
     def _find_paths(self, column: str, operator: str, value, offset: int = 0, limit: int = 20) -> List[PathModel]:
         sql_statement: str = f'SELECT id, `path`, extension, name, owner, `group`, root, drive, size_in_mb, ' \
-                             f'hash_md5, hash_sha256, is_windows_path, hidden, archive, compressed, encrypted, ' \
+                             f'hash, is_windows_path, hidden, archive, compressed, encrypted, ' \
                              f'offline, readonly, `system`, `temporary`, content_family, mime_type, path_type, ' \
                              f'path_stage, date_created, date_updated ' \
                              f'FROM `path` ' \
@@ -91,9 +91,9 @@ class PathDataManager:
                 for row in rows:
                     path = row[1]
                     root = row[6]
-                    if row[22] == PathType.FILE.name:
+                    if row[21] == PathType.FILE.name:
                         path_model = FileModel(path=path, root=root)
-                    elif row[22] == PathType.DIRECTORY.name:
+                    elif row[21] == PathType.DIRECTORY.name:
                         path_model = DirectoryModel(path=path, root=root)
                     else:
                         raise ValueError(f"The path type can not be defined: '{row[22]}' is neither a file, "
@@ -105,22 +105,21 @@ class PathDataManager:
                     path_model.group = row[5]
                     path_model.drive = row[7]
                     path_model.size_in_mb = row[8]
-                    path_model.hash_md5 = row[9]
-                    path_model.hash_sha256 = row[10]
-                    path_model.is_windows_path = row[11].decode()
-                    path_model.hidden = row[12].decode()
-                    path_model.archive = row[13].decode()
-                    path_model.compressed = row[14].decode()
-                    path_model.encrypted = row[15].decode()
-                    path_model.offline = row[16].decode()
-                    path_model.readonly = row[17].decode()
-                    path_model.system = row[18].decode()
-                    path_model.temporary = row[19].decode()
-                    path_model.content_family = row[20]
-                    path_model.mime_type = row[21]
-                    path_model.path_stage = row[23]
-                    path_model.date_created = row[24]
-                    path_model.date_updated = row[25]
+                    path_model.hash = row[9]
+                    path_model.is_windows_path = row[10].decode()
+                    path_model.hidden = row[11].decode()
+                    path_model.archive = row[12].decode()
+                    path_model.compressed = row[13].decode()
+                    path_model.encrypted = row[14].decode()
+                    path_model.offline = row[15].decode()
+                    path_model.readonly = row[16].decode()
+                    path_model.system = row[17].decode()
+                    path_model.temporary = row[18].decode()
+                    path_model.content_family = row[19]
+                    path_model.mime_type = row[20]
+                    path_model.path_stage = row[22]
+                    path_model.date_created = row[23]
+                    path_model.date_updated = row[24]
                     path_list.append(path_model)
                     logging.debug(f"Fetched path '{path}'")
             logging.info(f"Fetched {len(path_list)} paths")
@@ -141,19 +140,16 @@ class PathDataManager:
     def get_path(self, path: str) -> PathModel:
         return self._get_path_by(column='path', operator='=', value=path)
 
-    def find_paths_by_md5_hash(self, md5_hash: str) -> PathModel:
-        return self._find_paths(column='hash_md5', operator='=', value=md5_hash)
-
-    def find_paths_by_sha256_hash(self, sha256_hash: str) -> PathModel:
-        return self._find_paths(column='hash_sha256', operator='=', value=sha256_hash)
+    def find_paths_by_hash(self, hash: str) -> PathModel:
+        return self._find_paths(column='hash', operator='=', value=hash)
 
     def find_duplicates(self) -> Dict[str, List]:
-        sql_statement: str = ('Select p.size_in_mb, p.hash_md5, p.`path` '
+        sql_statement: str = ('Select p.size_in_mb, p.hash, p.`path` '
                               'FROM `path` p '
                               'Inner Join `path` p1 on p.size_in_mb = p1.size_in_mb '
-                              ' AND p.hash_md5 = p1.hash_md5 AND p.`path` <> p1.`path` '
-                              'Where p.hash_md5 <> '' AND p.hash_md5 IS NOT NULL '
-                              'Order By p.size_in_mb DESC, p.hash_md5, p.`path`')
+                              ' AND p.hash = p1.hash AND p.`path` <> p1.`path` '
+                              'Where p.hash <> '' AND p.hash IS NOT NULL '
+                              'Order By p.size_in_mb DESC, p.hash, p.`path`')
         result: Dict[str, List] = {}
         try:
             with self.cursor() as cur:
@@ -173,13 +169,13 @@ class PathDataManager:
 
     def save_path(self, path_model: PathModel) -> None:
         sql_statement: str = f'INSERT INTO `path` (`path`, extension, name, owner, `group`, root, drive, size_in_mb, ' \
-                             f'hash_md5, hash_sha256, is_windows_path, hidden, archive, compressed, encrypted, offline, ' \
+                             f'hash, is_windows_path, hidden, archive, compressed, encrypted, offline, ' \
                              f'readonly, `system`, `temporary`, content_family, mime_type, path_type, files_in_dir, tags, path_stage) ' \
-                             f'VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ' \
+                             f'VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ' \
                              f'%s, %s, %s, %s, %s)' \
                              f'ON DUPLICATE KEY UPDATE extension=VALUES(extension), name=VALUES(name), ' \
                              f'owner=VALUES(owner), `group`=VALUES(`group`), root=VALUES(root), drive=VALUES(drive), ' \
-                             f'size_in_mb=VALUES(size_in_mb), hash_md5=VALUES(hash_md5), hash_sha256=VALUES(hash_sha256), ' \
+                             f'size_in_mb=VALUES(size_in_mb), hash=VALUES(hash), ' \
                              f'is_windows_path=VALUES(is_windows_path), hidden=VALUES(hidden), archive=VALUES(archive), ' \
                              f'compressed=VALUES(compressed), encrypted=VALUES(encrypted), offline=VALUES(offline), ' \
                              f'readonly=VALUES(readonly), `system`=VALUES(`system`), `temporary`=VALUES(`temporary`), ' \
@@ -189,7 +185,7 @@ class PathDataManager:
         try:
             params = (path_model.full_path, path_model.extension, path_model.name, path_model.owner,
                       path_model.group, path_model.path_root, path_model.drive, path_model.size_in_mb,
-                      path_model.hash_md5, path_model.hash_sha256, path_model.is_windows_path,
+                      path_model.hash, path_model.is_windows_path,
                       path_model.hidden, path_model.archive, path_model.compressed,
                       path_model.encrypted, path_model.offline, path_model.readonly,
                       path_model.system, path_model.temporary, str(path_model.content_family),

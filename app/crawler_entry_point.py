@@ -11,6 +11,7 @@ from typing import List
 import platform
 
 from loguru import logger
+import xxhash
 
 root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_folder)
@@ -88,8 +89,10 @@ def main():
     processors: List[IPathProcessor] = []
 
     hash_algos = {}
-    hash_algos['md5'] = hashlib.md5()
-    # hash_algos['sha256'] = hashlib.sha256()   # Avoids risk of collisions, but much slower
+    # hash_algos['xxh32'] = xxhash.xxh32()      # 15 sec to hash 10 Go
+    hash_algos['xxh3_64'] = xxhash.xxh3_64()    # 15 sec to hash 10 Go
+    # hash_algos['md5'] = hashlib.md5()         # 22 sec to hash 10 Go
+    # hash_algos['sha256'] = hashlib.sha256()   # 28 sec to hash 10 Go - Avoids risk of collisions, but much slower
     processors.append(HashFileProcessor(hash_algorithms=hash_algos))
     processors.append(ExtendedAttributesFileProcessor())
     if platform.system() == "Darwin":

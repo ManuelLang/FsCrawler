@@ -52,6 +52,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
         self.processed_files_size = 0
         self.lock = Lock()
         self.nb_running_threads: int = 0
+        self.remaining_tasks: int = 0
 
     @property
     def processed_files(self) -> List[FileModel]:
@@ -79,7 +80,8 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
                 max_retries -= 1
                 if max_retries <= 0:
                     self._should_stop = True
-                    logger.warning("Processed stopped because no more items coming into queue")
+                    logger.warning("No more items coming into queue. Still processing popped items... "
+                                   f"({self.remaining_tasks} running tasks)")
                     break
                 logger.info(f"Queue emtpy, waiting for the files to be processed. "
                             f"{max_retries} retry left...")
@@ -147,7 +149,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
     def start(self):
         self._in_progress = True
         futures = []
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=1) as executor:
             while True:
                 if self._should_stop:
                     logger.error(f"Stopping current session...")
@@ -195,16 +197,16 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
             running: bool = True
             while running:
                 completed = 0
-                size = 0
+                self.remaining_tasks = 0
                 for _ in as_completed(futures):
                     completed += 1
-                    size = len(futures) - completed
-                    if size % 91 == 0:
-                        logger.info(f'About {size} tasks remain')
-                    if size % 1000 == 0:
-                        logger.success(f'About {size} tasks remain')
+                    self.remaining_tasks = len(futures) - completed
+                    if self.remaining_tasks % 91 == 0:
+                        logger.info(f'About {self.remaining_tasks} tasks remain')
+                    if self.remaining_tasks % 1000 == 0:
+                        logger.success(f'About {self.remaining_tasks} tasks remain')
                 self.lock.acquire(blocking=True)
-                running = self.nb_running_threads > 0 or size > 0
+                running = self.nb_running_threads > 0 or self.remaining_tasks > 0
                 self.lock.release()
                 time.sleep(5)
         self._in_progress = False

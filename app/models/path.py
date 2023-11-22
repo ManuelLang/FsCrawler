@@ -61,8 +61,7 @@ class PathModel(ABC):
             self.root: str = None
             self.drive: str = None
             self.status = 'DELETED'
-        self.hash_md5: str = None
-        self.hash_sha256: str = None
+        self.hash: str = None
         self.is_windows_path: bool = False
         self.hidden: bool = False
         self.archive: bool = False
