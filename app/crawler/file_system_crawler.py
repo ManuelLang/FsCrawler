@@ -8,6 +8,7 @@ from typing import List, Dict
 
 from loguru import logger
 
+from app.config import config
 from app.crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
 from app.crawler.events.crawlErrorEventArgs import CrawlErrorEventArgs
 from app.crawler.events.crawlProgressEventArgs import CrawlProgessEventArgs
@@ -25,7 +26,10 @@ from app.interfaces.iCrawler import ICrawler
 from app.interfaces.iCrawlerObserver import ICrawlerObserver
 from app.interfaces.iFilter import IFilter
 
+from app.helpers.filesize_helper import format_file_size
+
 MIN_BLOCK_SIZE = 1024 * 4
+MAX_LAST_N_ITEMS_TO_KEEP = 20
 
 
 class FileSystemCrawler(ICrawler):
@@ -52,14 +56,21 @@ class FileSystemCrawler(ICrawler):
 
         # stats
         self._paths_found: List[Path] = []
+        self._nb_paths_found: int = 0
         self._paths_skipped: List[Path] = []
+        self._nb_paths_skipped: int = 0
         self._files_processed: List[Path] = []
+        self._nb_files_processed: int = 0
         self._directories_processed: List[Path] = []
+        self._nb_directories_processed: int = 0
         self._errored_paths: Dict[str, str] = defaultdict(str)
+        self._nb_errored_paths: int = 0
         self._crawled_paths: List[str] = []
         self._crawled_files_size: int = 0
         self._processed_files_size: int = 0
-        self._ignored_files: int = 0
+        self._nb_ignored_files: int = 0
+        self._nb_ignored_dirs: int = 0
+        self._nb_processed_paths: int = 0
         self._start_time: datetime = None
         self._end_time: datetime = None
         self.duration = 0
@@ -98,23 +109,52 @@ class FileSystemCrawler(ICrawler):
     # region stats
 
     @property
+    def nb_paths_found(self) -> int:
+        return self._nb_paths_found
+
+    @property
+    def nb_processed_paths(self) -> int:
+        return self._nb_processed_paths
+
+    @property
     def paths_found(self) -> List[Path]:
+        self._paths_found = self._paths_found[-MAX_LAST_N_ITEMS_TO_KEEP:]
         return self._paths_found
 
     @property
+    def nb_paths_skipped(self) -> int:
+        return self._nb_paths_skipped
+
+    @property
     def paths_skipped(self) -> List[Path]:
+        self._paths_skipped = self._paths_skipped[-MAX_LAST_N_ITEMS_TO_KEEP:]
         return self._paths_skipped
 
     @property
+    def nb_files_processed(self) -> int:
+        return self._nb_files_processed
+
+    @property
     def files_processed(self) -> List[Path]:
+        self._files_processed = self._files_processed[-MAX_LAST_N_ITEMS_TO_KEEP:]
         return self._files_processed
 
     @property
+    def nb_directories_processed(self) -> int:
+        return self._nb_directories_processed
+
+    @property
     def directories_processed(self) -> List[Path]:
+        self._directories_processed = self._directories_processed[-MAX_LAST_N_ITEMS_TO_KEEP:]
         return self._directories_processed
 
     @property
+    def nb_crawled_paths(self) -> int:
+        return self._nb_paths_found
+
+    @property
     def crawled_paths(self) -> List[str]:
+        self._crawled_paths = self._crawled_paths[-MAX_LAST_N_ITEMS_TO_KEEP:]
         return self._crawled_paths
 
     @property
@@ -126,7 +166,12 @@ class FileSystemCrawler(ICrawler):
         return self._processed_files_size
 
     @property
+    def nb_errored_paths(self) -> int:
+        return self._nb_errored_paths
+
+    @property
     def errored_paths(self) -> Dict[str, str]:
+        self._errored_paths = self._errored_paths[-MAX_LAST_N_ITEMS_TO_KEEP:]
         return self._errored_paths
 
     @property
@@ -139,12 +184,11 @@ class FileSystemCrawler(ICrawler):
 
     @property
     def nb_files_skipped(self) -> int:
-        return self._ignored_files
+        return self._nb_ignored_files
 
     @property
     def nb_directories_skipped(self) -> int:
-        _nb_dir_skipped = len(self._paths_skipped) - self._ignored_files
-        return _nb_dir_skipped
+        return self._nb_ignored_dirs
 
     # endregion
 
@@ -186,6 +230,7 @@ class FileSystemCrawler(ICrawler):
 
     def notify_path_found(self, crawl_event: PathFoundEventArgs):
         self.paths_found.append(crawl_event.path)
+        self._nb_paths_found += 1
         for observer in self.observers:
             try:
                 observer.path_found(crawl_event)
@@ -196,8 +241,11 @@ class FileSystemCrawler(ICrawler):
 
     def notify_path_skipped(self, crawl_event: PathSkippedEventArgs):
         self.paths_skipped.append(crawl_event.path)
+        self._nb_paths_skipped += 1
         if crawl_event.is_file:
-            self._ignored_files += 1
+            self._nb_ignored_files += 1
+        elif crawl_event.is_dir:
+            self._nb_ignored_dirs += 1
         for observer in self.observers:
             try:
                 observer.path_skipped(crawl_event)
@@ -207,7 +255,7 @@ class FileSystemCrawler(ICrawler):
                 logger.error(f"Unable to notify observer '{observer}' for path_skipped event {crawl_event}: {ex}")
 
     def notify_processing_file(self, crawl_event: FileFoundEventArgs):
-        self._crawled_files_size += crawl_event.size_in_mb
+        self._crawled_files_size += crawl_event.size
         for observer in self.observers:
             try:
                 observer.processing_file(crawl_event)
@@ -217,7 +265,8 @@ class FileSystemCrawler(ICrawler):
                 logger.error(f"Unable to notify observer '{observer}' for processing_file event {crawl_event}: {ex}")
 
     def notify_processed_file(self, crawl_event: FileCrawledEventArgs):
-        self._processed_files_size += crawl_event.size_in_mb
+        self._processed_files_size += crawl_event.size
+        self._nb_files_processed += 1
         self.files_processed.append(crawl_event.path)
         for observer in self.observers:
             try:
@@ -239,6 +288,7 @@ class FileSystemCrawler(ICrawler):
                              f"{ex}")
 
     def notify_processed_directory(self, crawl_event: DirectoryCrawledEventArgs):
+        self._nb_directories_processed += 1
         self.directories_processed.append(crawl_event.path)
         for observer in self.observers:
             try:
@@ -310,21 +360,20 @@ class FileSystemCrawler(ICrawler):
                     logger.warning(f"Not adding path '{path}'")
 
             for path, root_dir in self._paths_to_crawl.items():
-                path_size_in_mb, files_in_directory = self.crawl_path(path, root_dir)
-                logger.success(f"Crawled path '{path}' [{path_size_in_mb:0.2f} Mb / {files_in_directory} files]")
+                path_size, files_in_directory = self.crawl_path(path, root_dir)
+                logger.success(f"Crawled path '{path}' [{format_file_size(path_size)} / {files_in_directory} files]")
         except Exception as ex:
             logger.error(ex)
             self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex))
 
         self._end_time = datetime.now()
         self.duration = self._end_time - self._start_time
-        nb_dir_skipped = len(self._paths_skipped) - self._ignored_files
-        logger.success(f"Found {len(self._crawled_paths)} paths (total of {self._crawled_files_size:0.2f} Mb) "
+        logger.success(f"Found {self._nb_paths_found} paths (total of {format_file_size(self._crawled_files_size)})"
                     f"in {self.duration} sec\n"
-                    f"\t- {len(self._directories_processed)} directories\n"
-                    f"\t- {len(self._files_processed)} files processed (total of {self._processed_files_size:0.2f} Mb)\n"
-                    f"\t- {self._ignored_files} ignored files, {nb_dir_skipped} "
-                    f"director{'y' if nb_dir_skipped <= 1 else 'ies'} skipped")
+                    f"\t- {self._nb_directories_processed} directories\n"
+                    f"\t- {self._nb_files_processed} files processed (total of {format_file_size(self._processed_files_size)})\n"
+                    f"\t- {self._nb_ignored_files} ignored files, {self._nb_ignored_dirs} "
+                    f"director{'y' if self._nb_ignored_dirs <= 1 else 'ies'} skipped")
 
         if self.require_stop:
             self.notify_crawl_stopped(crawl_event=CrawlStoppedEventArgs(crawler=self))
@@ -332,10 +381,10 @@ class FileSystemCrawler(ICrawler):
             self.notify_crawl_completed(crawl_event=CrawlCompletedEventArgs(crawler=self))
 
     def crawl_path(self, path: Path, root_dir: str) -> (int, int):
-        path_size_in_mb = 0
+        path_size = 0
         files_in_directory = 0
         if self._require_stop:
-            return path_size_in_mb, files_in_directory
+            return path_size, files_in_directory
         try:
             entry = path.expanduser().resolve()
             entry_str = str(entry)
@@ -343,20 +392,22 @@ class FileSystemCrawler(ICrawler):
 
             if not entry.exists():
                 logger.debug(f"File: '{entry_str}' does not exists. Ignoring.")
-                return path_size_in_mb, files_in_directory
+                return path_size, files_in_directory
 
             self.notify_path_found(crawl_event=PathFoundEventArgs(crawler=self, path=path, root_dir_path=root_dir,
-                                                                  is_dir=None, is_file=None, size_in_mb=-1))
+                                                                  is_dir=None, is_file=None, size=-1))
+            self._nb_processed_paths += 1
             if entry.is_file():
                 logger.debug(f"Crawling file: '{entry_str}'")
                 files_in_directory = 1
                 file_size = entry.lstat().st_size
-                size_on_disk = ((int)(file_size / MIN_BLOCK_SIZE)) * MIN_BLOCK_SIZE + MIN_BLOCK_SIZE
-                path_size_in_mb = convert_size_to_mb(size_on_disk)
+                # size_on_disk = ((int)(file_size / MIN_BLOCK_SIZE)) * MIN_BLOCK_SIZE + MIN_BLOCK_SIZE
+                # path_size = convert_size_to_mb(size_on_disk)
+                path_size = file_size
                 self.notify_processing_file(crawl_event=FileFoundEventArgs(crawler=self, path=entry,
                                                                            is_dir=entry.is_dir(),
                                                                            is_file=entry.is_file(),
-                                                                           size_in_mb=path_size_in_mb,
+                                                                           size=path_size,
                                                                            root_dir_path=root_dir))
             else:
                 if entry.is_dir():
@@ -364,10 +415,14 @@ class FileSystemCrawler(ICrawler):
                     self.notify_processing_directory(crawl_event=DirectoryFoundEventArgs(crawler=self, path=entry,
                                                                                          is_dir=entry.is_dir(),
                                                                                          is_file=entry.is_file(),
-                                                                                         size_in_mb=path_size_in_mb,
+                                                                                         size=path_size,
                                                                                          root_dir_path=root_dir))
-            if len(self._crawled_paths) % 1000 == 0:
+            if self._nb_paths_found % 1000 == 0 and self._nb_paths_found > 0:
                 self.notify_crawl_progress(crawl_event=CrawlProgessEventArgs(crawler=self))
+                if config.LOGGING_LEVEL >= config.LOG_LEVEL_WARNING:
+                    print(".", end="")  # Show progress indicator
+                else:
+                    logger.success(f"Found {self._nb_paths_found} paths so far...")
 
             # TODO: consider a more elegant way to achieve this:
             # if any(not f.authorize(crawler=self, path=entry) for f in self.filters):
@@ -382,10 +437,10 @@ class FileSystemCrawler(ICrawler):
                 self.notify_path_skipped(crawl_event=PathSkippedEventArgs(crawler=self, path=entry,
                                                                           is_dir=entry.is_dir(),
                                                                           is_file=entry.is_file(),
-                                                                          size_in_mb=path_size_in_mb,
+                                                                          size=path_size,
                                                                           root_dir_path=root_dir))
                 logger.debug(f"Path '{entry_str}' skipped...")
-                return path_size_in_mb, files_in_directory
+                return path_size, files_in_directory
 
             # FIND mode: notify when path matches any of the notify_filters
             should_notify = not self._notify_filters
@@ -401,41 +456,41 @@ class FileSystemCrawler(ICrawler):
                     self.notify_processed_file(crawl_event=FileCrawledEventArgs(crawler=self, path=entry,
                                                                                 is_dir=entry.is_dir(),
                                                                                 is_file=entry.is_file(),
-                                                                                size_in_mb=path_size_in_mb,
+                                                                                size=path_size,
                                                                                 root_dir_path=root_dir))
             elif entry.is_dir():
                 logger.debug(f"Found directory: '{entry_str}'")
                 for dir_item in entry.iterdir():
-                    sub_item_size_in_mb, files_in_sub_directory = self.crawl_path(dir_item, root_dir)
-                    path_size_in_mb += sub_item_size_in_mb
+                    sub_item_size, files_in_sub_directory = self.crawl_path(dir_item, root_dir)
+                    path_size += sub_item_size
                     files_in_directory += files_in_sub_directory
 
-                logger.info(f"Crawled directory '{entry_str}', size: {path_size_in_mb:0.2f} Mb")
+                logger.info(f"Crawled directory '{entry_str}', size: {format_file_size(path_size)}")
                 if should_notify:
                     self.notify_processed_directory(crawl_event=
                                                     DirectoryCrawledEventArgs(crawler=self, path=entry,
-                                                                              size_in_mb=path_size_in_mb,
+                                                                              size=path_size,
                                                                               files_in_dir=files_in_directory,
                                                                               root_dir_path=root_dir))
         except Exception as ex:
             logger.error(ex)
             self._errored_paths[str(path)] = str(ex)
             self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex, path=path))
-        return path_size_in_mb, files_in_directory
+        return path_size, files_in_directory
 
     def to_json(self) -> dict:
         return {
             "roots": self.roots,
             "filters": self.skip_filters,
             "observers": self.observers,
-            "paths_found": self.paths_found,
-            "paths_skipped": self.paths_skipped,
-            "files_processed": self.files_processed,
-            "directories_processed": self.directories_processed,
-            "crawled_paths": self.crawled_paths,
-            "crawled_files_size": self.crawled_files_size,
-            "processed_files_size": self.processed_files_size,
-            "errored_paths": self.errored_paths,
+            "paths_found": self.nb_paths_found,
+            "paths_skipped": self.nb_paths_skipped,
+            "files_processed": self.nb_files_processed,
+            "directories_processed": self.nb_directories_processed,
+            "crawled_paths": self.nb_crawled_paths,
+            "crawled_files_size": format_file_size(self.crawled_files_size),
+            "processed_files_size": format_file_size(self.processed_files_size),
+            "errored_paths": self.nb_errored_paths,
             "start_time": self.start_time,
             "end_time": self.end_time,
             "duration": self.duration,

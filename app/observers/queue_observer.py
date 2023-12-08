@@ -52,7 +52,7 @@ class QueueObserver(ICrawlerObserver):
     def path_skipped(self, crawl_event: PathSkippedEventArgs):
         super().path_skipped(crawl_event)
         self._put_queue_event(crawl_event)
-        # logger.warning(f"Path skipped: {crawl_event.path} ({crawl_event.size_in_mb})")
+        # logger.warning(f"Path skipped: {crawl_event.path} ({crawl_event.size})")
 
     def processing_file(self, crawl_event: FileFoundEventArgs):
         super().processing_file(crawl_event)

@@ -7,12 +7,12 @@ from typing import List
 
 class ContentFamily(Enum):
     ALL = '*'
-    MUSIC = 'MUSIC'
-    PICTURE = 'PICTURE'
-    VIDEO = 'VIDEO'
-    DOCUMENT = 'DOCUMENT'
-    APPLICATION = 'APPLICATION'
-    ARCHIVE = 'ARCHIVE'
+    AUDIO = 1
+    PICTURE = 2
+    VIDEO = 3
+    DOCUMENT = 4
+    APPLICATION = 5
+    ARCHIVE = 6
 
     def __str__(self):
         return self.name

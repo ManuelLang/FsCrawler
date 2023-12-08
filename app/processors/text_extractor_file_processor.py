@@ -24,7 +24,7 @@ class TextExtractorFileProcessor(IPathProcessor):
         if not out_text_directory or not out_text_directory.is_dir():
             raise ValueError(f"The given path is not a valid directory: '{out_text_directory}'")
         self.out_text_directory = out_text_directory
-        self.max_size_in_mb: int = 10
+        self.max_size: int = 10 * 1024 * 1024
 
     @property
     def processor_type(self) -> PathType:
@@ -34,7 +34,7 @@ class TextExtractorFileProcessor(IPathProcessor):
         logger.debug(f"Extracting file's text: {path_model}")
         text: str = ''
         try:
-            if crawl_event.size_in_mb < self.max_size_in_mb:
+            if crawl_event.size < self.max_size:
                 text = textract.process(crawl_event.path)
         except Exception as ex:
             try:

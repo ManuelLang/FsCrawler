@@ -9,6 +9,8 @@ from loguru import logger
 from app.filters.filter import Filter
 from app.interfaces.iCrawler import ICrawler
 
+from app.helpers.filesize_helper import format_file_size
+
 
 class SizeFilter(Filter):
 
@@ -27,16 +29,16 @@ class SizeFilter(Filter):
         size = path.lstat().st_size
         authorized = self.min_size_in_bytes <= size <= self.max_size_in_bytes
         if not authorized:
-            logger.debug(f"Skipping path {path}: size is {size} (min allowed: {self.min_size_in_bytes}, "
-                         f"max allowed: {self.max_size_in_bytes})")
+            logger.debug(f"Skipping path {path}: size is {format_file_size(size)} (min allowed: {format_file_size(self.min_size_in_bytes)}, "
+                         f"max allowed: {format_file_size(self.max_size_in_bytes)})")
         return authorized
 
     def to_json(self) -> dict:
         json_dict = super().to_json()
         json_dict.update({
             "filter": self.__class__.__name__,
-            "min_size_in_bytes": self.min_size_in_bytes,
-            "max_size_in_bytes": self.max_size_in_bytes
+            "min_size_in_bytes": format_file_size(self.min_size_in_bytes),
+            "max_size_in_bytes": format_file_size(self.max_size_in_bytes)
         })
         return json_dict
 

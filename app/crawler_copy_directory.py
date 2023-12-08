@@ -14,6 +14,7 @@ from loguru import logger
 root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_folder)
 
+from app.helpers.filesize_helper import format_file_size
 from app.crawler.file_system_crawler import FileSystemCrawler
 from app.crawling_queue_consumer import CrawlingQueueConsumer
 from app.filters.path_pattern_filter import PatternFilter
@@ -69,7 +70,7 @@ def process_path(roots: dict, skip_filters: List[IFilter] = [], notify_filters: 
     consumer_thread.join()
 
     crawl_duration = datetime.now() - crawler.start_time
-    logger.info(f"Crawled {len(crawler.files_processed)} files (total of {crawler.crawled_files_size:0.2f} Mb) "
+    logger.info(f"Crawled {len(crawler.files_processed)} files (total of {format_file_size(crawler.crawled_files_size)})"
                 f"in {crawl_duration} sec")
     metricsObserver.print_statistics()
 

@@ -6,6 +6,7 @@ from stat import UF_HIDDEN, SF_ARCHIVED, UF_COMPRESSED
 
 import magic
 from loguru import logger
+from datetime import datetime
 
 from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
 from interfaces.iPathProcessor import IPathProcessor
@@ -27,9 +28,13 @@ class ExtendedAttributesFileProcessor(IPathProcessor):
         logger.debug(f"Fetching file's extended attributes: {path_model}")
         path_model.reserved = crawl_event.path.is_reserved()
         path_model.mime_type = self.mime.from_file(crawl_event.path)
-        path_model.content_family = PathModel.get_content_familiy_from_mime_type(mime_type=path_model.mime_type)
+        path_model.content_family = PathModel.get_content_family_from_mime_type(mime_type=path_model.mime_type)
 
         lstat = crawl_event.path.lstat()
+
+        path_model.create_time = datetime.fromtimestamp(lstat.st_ctime)
+        path_model.modify_time = datetime.fromtimestamp(lstat.st_mtime)
+
         path_model.is_windows_path = True \
             if hasattr(lstat, 'st_file_attributes') and lstat.st_file_attributes is not None \
             else False

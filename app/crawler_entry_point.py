@@ -17,6 +17,7 @@ root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__
 sys.path.append(root_folder)
 
 from app.config import config
+from app.helpers.filesize_helper import format_file_size
 from app.crawler.file_system_crawler import FileSystemCrawler
 from app.crawling_queue_consumer import CrawlingQueueConsumer
 from app.database.data_manager import PathDataManager
@@ -26,8 +27,11 @@ from app.observers.metrics_observer import MetricsObserver
 from app.observers.queue_observer import QueueObserver
 from app.processors.hash_file_processor import HashFileProcessor
 from app.processors.metadata_extractor.extended_attributes_file_processor import ExtendedAttributesFileProcessor
+from app.processors.metadata_extractor.rating_file_processor import RatingFileProcessor
+from app.processors.metadata_extractor.keywords_file_processor import KeywordsFileProcessor
 from app.filters.extension_filter import ExtensionFilter
 from app.filters.path_regex_pattern_filter import RegexPatternFilter
+
 if platform.system() == "Darwin":
     from app.processors.metadata_extractor.mac_finfer_tags_extractor import MacFinderTagsExtractorFileProcessor
 
@@ -59,7 +63,8 @@ def main():
                                       ".docker", "dockervolumes", "jenkins", ".eclipse", ".Trash", ".krew", "kube",
                                       ".android", ".bash_sessions", ".sqldeveloper", "Quarantine", ".atom",
                                       ".oracle_jre_usage", ".poetry", ".psql_history", ".pylint.d", ".rnd", ".vnc",
-                                      "kubepug", "Library", "chromedriver", "tmp", "tutorials\/guest", "@eaDir"]
+                                      "kubepug", "Library", "chromedriver", "tmp", "tutorials\/guest", "@eaDir",
+                                      ".storage", ".svn"]
     for skip_dir in directories_to_skip:
         if skip_dir:
             crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=f"\/{skip_dir}\/"))
@@ -77,7 +82,7 @@ def main():
         "dat", "bak", "db", "ibd", "pyc", "class", "jar", "war", "DS_Store", "AppleDouble", "LSOverride", "tab", "so",
         "__styleext__", "APACHE2", "apk", "appcache", "attic", "babelrc", "before", "bin", "bnf", "BSD", "cache",
         "clonedeep", "debounce", "def", "delivery", "disabled", "dist", "dist - info", "dmg", "editorconfig",
-        "gitmodules", "lock", "pyc", "sample", "map"
+        "gitmodules", "lock", "pyc", "sample", "map", "svn"
     ]))
 
     crawling_queue: Queue = Queue(maxsize=config.QUEUE_MAX_SIZE)
@@ -93,7 +98,9 @@ def main():
     hash_algos['xxh3_64'] = xxhash.xxh3_64()    # 15 sec to hash 10 Go
     # hash_algos['md5'] = hashlib.md5()         # 22 sec to hash 10 Go
     # hash_algos['sha256'] = hashlib.sha256()   # 28 sec to hash 10 Go - Avoids risk of collisions, but much slower
-    processors.append(HashFileProcessor(hash_algorithms=hash_algos))
+    # processors.append(HashFileProcessor(hash_algorithms=hash_algos))
+    processors.append(RatingFileProcessor())
+    processors.append(KeywordsFileProcessor())
     processors.append(ExtendedAttributesFileProcessor())
     if platform.system() == "Darwin":
         processors.append(MacFinderTagsExtractorFileProcessor())
@@ -114,11 +121,7 @@ def main():
     consumer_thread.join()
 
     crawl_duration = datetime.now() - crawler.start_time
-
-    processed_gb = crawler.crawled_files_size / 1024 \
-        if crawler.crawled_files_size and crawler.crawled_files_size > 1024 \
-        else 0
-    logger.warning(f"Crawled {len(crawler.files_processed)} files (total of {processed_gb:0.2f} Gb) "
+    logger.warning(f"Crawled {len(crawler.files_processed)} files (total of {format_file_size(crawler.crawled_files_size)}) "
                    f"in {crawl_duration} sec")
     metricsObserver.print_statistics()
 

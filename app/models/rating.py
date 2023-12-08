@@ -4,10 +4,15 @@
 from enum import Enum
 
 
-class PathType(Enum):
+class Rating(Enum):
     ALL = '*'
-    FILE = 1
-    DIRECTORY = 2
+    EXCELLENT = 5
+    GREAT = 4
+    AVERAGE = 3
+    POOR = 2
+    BAD = 1
 
     def __str__(self):
         return self.name
+
+

@@ -2,7 +2,7 @@
 #  Software under GNU AGPLv3 licence
 
 import os
-from abc import ABC
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict
 from loguru import logger
@@ -11,6 +11,8 @@ import re
 from models.content import ContentFamily
 from models.path_stage import PathStage
 from models.path_type import PathType
+
+from app.models.rating import Rating
 
 
 class PathModel(ABC):
@@ -21,7 +23,7 @@ class PathModel(ABC):
         return (hasattr(subclass, 'path_type') and
                 callable(subclass.path_type))
 
-    def __init__(self, root: str, path, size_in_mb: int = 0) -> None:
+    def __init__(self, root: str, path: str | Path, size: int = 0, files_in_dir: int = 0) -> None:
         super().__init__()
         if not path:
             raise ValueError("The path is mandatory")
@@ -39,10 +41,22 @@ class PathModel(ABC):
         if self.relative_path and len(self.relative_path) > 0 and self.relative_path[0] == '/':
             self.relative_path = self.relative_path[1:]
 
-        self.extension: str = self.get_extension(self.path)
-        self.size_in_mb: int = size_in_mb
+        self.extension: str = None
+        self.size: int = size
+        self.create_time = None
+        self.modify_time = None
 
-        if path.exists():
+        if self.path:
+            self.extension = self.get_extension(self.path)
+
+        self._path_type: PathType = None
+        if self.path and path.exists():
+
+            if self.path.is_file():
+                self._path_type = PathType.FILE
+            elif self.path.is_dir():
+                self._path_type = PathType.DIRECTORY
+
             self.name: str = path.stem
             try:
                 self.owner: str = path.owner()
@@ -61,6 +75,10 @@ class PathModel(ABC):
             self.root: str = None
             self.drive: str = None
             self.status = 'DELETED'
+
+        self.file_name: str = None
+        if self._path_type == PathType.FILE:
+            self.file_name = f"{self.name}{self.extension}"
         self.hash: str = None
         self.is_windows_path: bool = False
         self.hidden: bool = False
@@ -71,10 +89,13 @@ class PathModel(ABC):
         self.readonly: bool = False
         self.system: bool = False
         self.temporary: bool = False
-        self.content_family: str = None
+        self.content_family: ContentFamily = None
+        self.content_rating: Rating = None
         self.mime_type: str = None
         self.path_stage: PathStage = PathStage.CRAWLED  # if an instance of path is created, it means it was crawled
+        self.keywords: str = None
         self._tags: Dict[str, str] = {}  # For finder tags: <Label_Name, Color_name>
+        self.files_in_dir: int = files_in_dir
 
     def get_extension(self, path: Path) -> str | None:
         if not path or not path.is_file():
@@ -95,17 +116,18 @@ class PathModel(ABC):
                 else None     # Handles files having no extension
         if not extension:
             extension = path.suffix
-        if extension and not extension.startswith('.'):
-            extension = f".{extension}"
+        if extension:
+            extension = extension.strip()
+            if not extension.startswith('.'):
+                extension = f".{extension}"
+            if len(extension) > 25:
+                extension = extension[0:24]
         return extension
 
     @property
     def path_type(self) -> PathType:
-        if self.path:
-            if self.path.is_file():
-                return PathType.FILE
-            elif self.path.is_dir():
-                return PathType.DIRECTORY
+        if self._path_type:
+            return self._path_type
         raise NotImplementedError()
 
     @property
@@ -118,12 +140,32 @@ class PathModel(ABC):
         # return _full_path
         return self._full_path
 
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if self.path_type != other.path_type:
+            return False
+        if self.full_path != other.full_path:
+            return False
+        if self.hash and self.hash == other.hash:
+            return True
+        if self.path_type == PathType.DIRECTORY:
+            if self.size == other.size:
+                return True
+        if self.path_type == PathType.FILE:
+            if self.size > 0 and self.size == other.size:
+                return True
+            if (self.file_name and self.file_name == other.file_name
+                    and self.size > 0 and self.size == other.size
+                    and self.modify_time and self.modify_time == other.modify_time):
+                return True
+        return False
+
     @staticmethod
-    def get_content_familiy_from_mime_type(mime_type: str):
+    def get_content_family_from_mime_type(mime_type: str) -> ContentFamily:
         if not mime_type:
             return None
         if mime_type.startswith('audio') or 'music' in mime_type:
-            return ContentFamily.MUSIC
+            return ContentFamily.AUDIO
         if mime_type.startswith('video'):
             return ContentFamily.VIDEO
         if mime_type.startswith('image'):
@@ -163,7 +205,10 @@ class PathModel(ABC):
         root = values.get('root', '')
         if not path:
             return None
-        path_model: PathModel = PathModel(root=root, path=path)
+        path_type = PathType.FILE if values.get('path_type', '').lower() == 'file' else PathType.DIRECTORY
+        path_model: PathModel = PathModel(root=root, path=path, size=values.get('size', 0))
+        if not path_model.path_type:
+            path_model._path_type = path_type
         return path_model
 
     def to_json(self):

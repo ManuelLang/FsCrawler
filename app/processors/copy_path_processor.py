@@ -14,6 +14,8 @@ from app.models.path_type import PathType
 from app.processors.delete_path_processor import DeletePathProcessor
 from models.file import FileModel
 
+from app.helpers.filesize_helper import format_file_size
+
 BUF_SIZE = 64 * 1024 * 100  # lets read stuff in 6,4 Mb chunks!
 
 
@@ -57,20 +59,20 @@ class CopyPathProcessor(IPathProcessor):
                     # Same filename, different size: perform a soft delete
                     logger.info(
                         f"Deleting file {path_model.full_path} (because destination already exists and have different size)")
-                    dst_file_model = FileModel(root=path_model.root, path=dest_path, size_in_mb=path_model.size_in_mb)
+                    dst_file_model = FileModel(root=path_model.root, path=dest_path, size=path_model.size)
                     self.delete_file_processor.process_path(
                         crawl_event=FileCrawledEventArgs(
                             crawler=crawl_event.crawler,
                             path=dest_path,
                             is_dir=False,
                             is_file=True,
-                            size_in_mb=crawl_event.size_in_mb,
+                            size=crawl_event.size,
                             root_dir_path=crawl_event.root_dir_path
                         ),
                         path_model=dst_file_model)
 
             # https://stackoverflow.com/questions/123198/how-to-copy-files
             dst_file, fsize = copy2(crawl_event.path, dstname)
-            logger.info(f"Done copying file {path_model.full_path} ({dst_file}/{fsize})")
+            logger.info(f"Done copying file {path_model.full_path} ({dst_file}/{format_file_size(fsize)})")
         except Exception as ex:
             logger.error(f"Unable to copy file '{path_model.full_path}': {ex}")

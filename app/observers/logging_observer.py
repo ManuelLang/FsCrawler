@@ -16,6 +16,8 @@ from crawler.events.pathFoundEventArgs import PathFoundEventArgs
 from crawler.events.pathSkippedEventArgs import PathSkippedEventArgs
 from interfaces.iCrawlerObserver import ICrawlerObserver
 
+from app.helpers.filesize_helper import format_file_size
+
 
 class LoggingObserver(ICrawlerObserver):
 
@@ -33,14 +35,14 @@ class LoggingObserver(ICrawlerObserver):
 
     def processed_file(self, crawl_event: FileCrawledEventArgs):
         super().processed_file(crawl_event)
-        logger.info(f"Found file {crawl_event.path}: {crawl_event.size_in_mb:0.2f} Mb")
+        logger.info(f"Found file {crawl_event.path}: {format_file_size(crawl_event.size)}")
 
     def processing_directory(self, crawl_event: DirectoryFoundEventArgs):
         super().processing_directory(crawl_event)
 
     def processed_directory(self, crawl_event: DirectoryCrawledEventArgs):
         super().processed_directory(crawl_event)
-        logger.info(f"Found dir {crawl_event.path}: {crawl_event.size_in_mb} ({crawl_event.files_in_dir}) files")
+        logger.info(f"Found dir {crawl_event.path}: {crawl_event.size} ({crawl_event.files_in_dir}) files")
 
     def crawl_progress(self, crawl_event: CrawlProgessEventArgs):
         logger.info(f"Crawled so far:"
@@ -49,7 +51,7 @@ class LoggingObserver(ICrawlerObserver):
                     f"\n\t- directories processed: {len(crawl_event.crawler.directories_processed)}"
                     f"\n\t- files processed: {len(crawl_event.crawler.files_processed)}"
                     f"\n\t- total crawled paths: {len(crawl_event.crawler.crawled_paths)}"
-                    f"\n\t- total processed file size: {crawl_event.crawler.crawled_files_size:0.2f} Mb")
+                    f"\n\t- total processed file size: {format_file_size(crawl_event.crawler.crawled_files_size)}")
 
     def crawl_error(self, crawl_event: CrawlErrorEventArgs):
         logger.info(f"Error while scrawling path '{crawl_event.path}': {crawl_event.error}")

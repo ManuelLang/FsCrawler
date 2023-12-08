@@ -85,6 +85,35 @@ docker-compose up -d
 PYTHONPATH=app python3 -m crawler_entry_point
 ```
 
+#### Performance
+
+##### Crawling
+
+Log output:
+```bash
+Crawled path '<xyz>>' [1275998.22 Mb / 9149 files]
+2023-11-22 22:36:23.840 | SUCCESS  | app.crawler.file_system_crawler:start:322 - Found 10171 paths (total of 1275998.22 Mb) in 0:01:34.295316 sec
+	- 888 directories
+	- 8725 files processed (total of 1191892.33 Mb)
+```
+That gives a bandwidth of 13.5 Gb/sec for finding files&dirs, apply all filters on them and raise events to the queue.
+
+##### Processing
+
+The longest operation here is to compute file hashes. That is done to check whether the content of a file has changed 
+or not, and also to compare files (i.e. find duplicates).
+```bash
+Crawled 8725 files (total of 1246.09 Gb) in 1:42:42.769598 sec
+```
+
+That gives 1.246 Tb for 6163 sec, or 0.2 Gb/sec.
+
+Running for the second time is much faster, as the crawler will check files that are already processed, to avoid 
+process them again if the path and the size have not changed
+```bash
+Crawled 8725 files (total of 1246.09 Gb) in 0:00:39.391930 sec
+```
+
 ## Architecture
 
 [TODO]

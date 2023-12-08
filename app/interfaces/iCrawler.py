@@ -40,7 +40,9 @@ class ICrawler(ABC):
                 hasattr(subclass, 'nb_files_skipped') and
                 callable(subclass.nb_files_skipped) and
                 hasattr(subclass, 'nb_directories_skipped') and
-                callable(subclass.nb_directories_skipped)
+                callable(subclass.nb_directories_skipped) and
+                hasattr(subclass, 'nb_processed_paths') and
+                callable(subclass.nb_processed_paths)
                 )
 
     @property
@@ -89,6 +91,10 @@ class ICrawler(ABC):
 
     @property
     def nb_directories_skipped(self) -> int:
+        raise NotImplementedError()
+
+    @property
+    def nb_processed_paths(self) -> int:
         raise NotImplementedError()
 
     @property

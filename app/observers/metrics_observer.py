@@ -22,6 +22,8 @@ from interfaces.iCrawlerObserver import ICrawlerObserver
 
 from app.models.path import PathModel
 
+from app.helpers.filesize_helper import format_file_size
+
 
 class MetricsObserver(ICrawlerObserver):
 
@@ -32,6 +34,7 @@ class MetricsObserver(ICrawlerObserver):
         self._paths_length: Dict[int, str] = defaultdict()
         self._crawled_extensions: List[str] = []
         self._directories_sizes: Dict[int, str] = {}
+        self._directories_nb_files: Dict[int, str] = {}
         self._empty_directories: List[str] = []
         self._skipped_files_size: int = 0
 
@@ -50,8 +53,14 @@ class MetricsObserver(ICrawlerObserver):
         return result
 
     @property
-    def biggest_directories(self, top_n: int = 10) -> Dict[int, List[str]]:
+    def biggest_directories(self, top_n: int = 10) -> Dict[int, str]:
         top_size = OrderedDict(sorted(self._directories_sizes.items(), reverse=True))
+        result = dict(take(top_n, top_size.items()))
+        return result
+
+    @property
+    def directories_most_files(self, top_n: int = 10) -> Dict[int, str]:
+        top_size = OrderedDict(sorted(self._directories_nb_files.items(), reverse=True))
         result = dict(take(top_n, top_size.items()))
         return result
 
@@ -62,7 +71,7 @@ class MetricsObserver(ICrawlerObserver):
         return result
 
     @property
-    def longest_paths(self, top_n: int = 10) -> Dict[int, List[str]]:
+    def longest_paths(self, top_n: int = 10) -> Dict[int, str]:
         top_length = OrderedDict(sorted(self._paths_length.items(), reverse=True))
         result = dict(take(top_n, top_length.items()))
         return result
@@ -72,14 +81,14 @@ class MetricsObserver(ICrawlerObserver):
         return self._skipped_files_size
 
     def print_statistics(self):
-        logger.success(f"Files extensions found ({len(self.extensions_found)}): {', '.join(self.extensions_found)}")
+        logger.success(f"Files extensions found ({len(self.extensions_found)}): {', '.join(self.extensions_found[:20] if len(self.extensions_found) > 20 else self.extensions_found)}")
         ext_diff = list(set(self.extensions_found) - set(self.extensions_crawled))
         inverse_diff = list(set(self.extensions_crawled) - set(self.extensions_found))
         if inverse_diff:
             logger.error(f"Some extensions were not recorded as found but are crawled. Please check this out: {inverse_diff}")
-        logger.success(f"Files extensions ignored ({len(ext_diff)}): {', '.join(sorted(ext_diff))}")
-        logger.success(f"Files extensions crawled ({len(self.extensions_crawled)}): {', '.join(self.extensions_crawled)}")
-        logger.success(f"Total size of skipped files: {self.skipped_files_total_size:.2f} Mb")
+        logger.success(f"Files extensions ignored ({len(ext_diff)}):  {', '.join(ext_diff[:20] if len(ext_diff) > 20 else ext_diff)}")
+        logger.success(f"Files extensions crawled ({len(self.extensions_crawled)}): {', '.join(self.extensions_crawled[:20] if len(self.extensions_crawled) > 20 else self.extensions_crawled)}")
+        logger.success(f"Total size of skipped files: {format_file_size(self.skipped_files_total_size)}")
         logger.success("Deepest paths:")
         for depth, path_list in self.deepest_paths.items():
             logger.success(f"depth: {depth} ({len(path_list)} items)\n\texemple: {path_list[0]}")
@@ -87,7 +96,10 @@ class MetricsObserver(ICrawlerObserver):
             #     logger.success(f"\n\t{path}")
         logger.success("Biggest directories (Top 10, in Mb):")
         for size, path in self.biggest_directories.items():
-            logger.success(f"\t{size:.2f} Mb\t\t{path}")
+            logger.success(f"\t{format_file_size(size)}\t\t{path}")
+        logger.success("Directories having most files (Top 10):")
+        for size, path in self.biggest_directories.items():
+            logger.success(f"\t{format_file_size(size)}\t\t{path}")
         if self.empty_directories:
             logger.success(f"{len(self._empty_directories)} empty directories. Top 10:")
             for dir_name in self.empty_directories:
@@ -109,15 +121,20 @@ class MetricsObserver(ICrawlerObserver):
         str_path = str(crawl_event.path)
         depth = len(list(crawl_event.path.parts)) - 1  # remove first '/'
         paths_list = self._paths_depth.get(depth, [])
-        if str_path not in paths_list:
+        if len(paths_list) < 20 and str_path not in paths_list:
             paths_list.append(str_path)
         self._paths_depth[depth] = paths_list
+        if len(self._paths_depth.keys()) > 100:
+            self._paths_depth = self.deepest_paths
+
         if str_path not in self._paths_length:
             self._paths_length[len(str_path)] = str_path
+        if len(self._paths_length.keys()) > 100:
+            self._paths_length = self.longest_paths
 
     def path_skipped(self, crawl_event: PathSkippedEventArgs):
         if crawl_event.is_file:
-            self._skipped_files_size += crawl_event.size_in_mb
+            self._skipped_files_size += crawl_event.size
 
     def processed_file(self, crawl_event: FileCrawledEventArgs):
         if crawl_event.__class__.__name__ != FileCrawledEventArgs.__name__ and crawl_event.__class__.__name__ != DirectoryCrawledEventArgs.__name__:
@@ -127,8 +144,15 @@ class MetricsObserver(ICrawlerObserver):
             self._crawled_extensions.append(path_model.extension)
 
     def processed_directory(self, crawl_event: DirectoryCrawledEventArgs):
-        self._directories_sizes[crawl_event.size_in_mb] = str(crawl_event.path)
-        if crawl_event.files_in_dir < 1 and crawl_event.size_in_mb < 1:
+        self._directories_sizes[crawl_event.size] = str(crawl_event.path)
+        if len(self._directories_sizes.keys()) > 100:
+            self._directories_sizes = self.biggest_directories
+
+        self._directories_nb_files[crawl_event.files_in_dir] = str(crawl_event.path)
+        if len(self._directories_nb_files.keys()) > 100:
+            self._directories_nb_files = self.directories_most_files
+
+        if crawl_event.files_in_dir < 1 and crawl_event.size < 1 and len(self._empty_directories) < 100:
             self._empty_directories.append(str(crawl_event.path))
 
     def crawl_stopped(self, crawl_event: CrawlStoppedEventArgs):

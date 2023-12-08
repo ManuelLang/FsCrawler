@@ -9,9 +9,8 @@ from models.path_type import PathType
 
 
 class FileModel(PathModel):
-    def __init__(self, root: str, path, size_in_mb: int = 0) -> None:
-        super().__init__(root, path, size_in_mb)
-
+    def __init__(self, root: str, path, size: int = 0) -> None:
+        super().__init__(root, path, size)
         if isinstance(path, Path) and not path.is_file():
             raise ValueError(f"The given path is not a file: '{path}'")
 

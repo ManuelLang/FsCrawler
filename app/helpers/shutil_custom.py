@@ -13,6 +13,8 @@ import os
 import stat
 import sys
 
+from app.helpers.filesize_helper import format_file_size
+
 ONE_KB = 1024
 ONE_MB = ONE_KB * 1024
 ONE_GB = ONE_MB * 1024
@@ -304,7 +306,7 @@ def copyfile(src, dst, *, follow_symlinks=True):
         os.symlink(os.readlink(src), dst)
     else:
         if fsize > MAX_FILE_SIZE:
-            print(f"WARNING: File '{src}' is large ({fsize})")
+            print(f"WARNING: File '{src}' is large ({format_file_size(fsize)})")
         with open(src, 'rb') as fsrc, open(dst, 'wb') as fdst:
             # macOS
             if _HAS_FCOPYFILE:
