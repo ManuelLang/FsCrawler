@@ -42,7 +42,11 @@ class KeywordsFileProcessor(IPathProcessor):
                 path_model.keywords = self.split_words(part)
                 if path_model.keywords:
                     logger.info(f"Found keywords: {path_model.keywords}\n{path_model.full_path}")
-        if not path_model.keywords and '[' in path_model.name:
+        if not path_model.keywords:
+
+            if path_model.keywords:
+                logger.info(f"Found keywords: {path_model.keywords}\n{path_model.full_path}")
+
             parts = reversed(path_model.name.split('['))
             for part in parts:
                 part = part.replace(']', '')
@@ -52,6 +56,20 @@ class KeywordsFileProcessor(IPathProcessor):
                 if path_model.keywords:
                     logger.info(f"Found keywords: {path_model.keywords}\n{path_model.full_path}")
         logger.debug(f"Done fetching file's keywords: {path_model.keywords}\n{path_model.full_path}")
+
+    def find_keywords_part(self, path_model: PathModel, part_start: str = '[', part_end: str = ']'):
+        if part_start not in path_model.name:
+            return None
+        parts = reversed(path_model.name.split(part_start))
+        start_index = str(path_model.name).rfind(part_start)
+        end_index = str(path_model.name).rfind(part_end)
+        if start_index < 0 or end_index < start_index:
+            return None
+        for part in parts:
+            part = part.replace(']', '')
+            keywords = self.split_words(part)
+            return keywords
+        return None
 
     def split_words(self, part: str) -> str | None:
         part = part.replace('.', ', ').replace('_', ', ')

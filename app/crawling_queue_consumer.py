@@ -143,7 +143,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
                 if config.LOGGING_LEVEL >= config.LOG_LEVEL_WARNING:
                     print(".", end="")  # Show progress indicator
                 else:
-                    logger.success(f"Processed {self.nb_completed_threads}/{self.nb_crawled_paths} (updated {self.nb_updated_paths_count} paths)")
+                    logger.success(f"Processed {self.nb_completed_threads}/{self.nb_crawled_paths} (updated {self.nb_updated_paths_count} paths) - {path_model.relative_path}")
         except Exception as exc:
             logger.error(f"Error while processing path '{crawl_event.path}': {exc}", exc)
         return path_model
@@ -151,7 +151,7 @@ class CrawlingQueueConsumer(ICrawlingQueueConsumer):
     def start(self):
         self._in_progress = True
         futures = []
-        with ThreadPoolExecutor(max_workers=200) as executor:
+        with ThreadPoolExecutor(max_workers=1000) as executor:
             while True:
                 if self._should_stop:
                     logger.error(f"Stopping current session... Remaining tasks: {self.nb_running_threads}")

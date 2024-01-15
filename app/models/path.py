@@ -14,6 +14,8 @@ from models.path_type import PathType
 
 from app.models.rating import Rating
 
+from app.models.content import ContentClassificationPegi, ContentCategory
+
 
 class PathModel(ABC):
     FILE_EXTENSION_PATTERN = re.compile("[a-z0-9_]{2,12}", re.IGNORECASE)
@@ -90,7 +92,10 @@ class PathModel(ABC):
         self.system: bool = False
         self.temporary: bool = False
         self.content_family: ContentFamily = None
+        self.content_category: ContentCategory = None
+        self.content_min_age: ContentClassificationPegi = None
         self.content_rating: Rating = None
+        self.quality_rating: Rating = None
         self.mime_type: str = None
         self.path_stage: PathStage = PathStage.CRAWLED  # if an instance of path is created, it means it was crawled
         self.keywords: str = None

@@ -28,13 +28,15 @@ from app.interfaces.iFilter import IFilter
 
 from app.helpers.filesize_helper import format_file_size
 
+from app.models.content import ContentCategory, ContentClassificationPegi
+
 MIN_BLOCK_SIZE = 1024 * 4
-MAX_LAST_N_ITEMS_TO_KEEP = 20
+MAX_LAST_N_ITEMS_TO_KEEP = 2000
 
 
 class FileSystemCrawler(ICrawler):
 
-    def __init__(self, roots: Dict[str, str], skip_filters: List[IFilter] = [], notify_filters: List[IFilter] = [],
+    def __init__(self, roots: Dict[str, dict], skip_filters: List[IFilter] = [], notify_filters: List[IFilter] = [],
                  observers: List[ICrawlerObserver] = []) -> None:
         """
         Create a new instance of crawler to browse  file system on a machine
@@ -47,7 +49,7 @@ class FileSystemCrawler(ICrawler):
         If notify_filters is set, notifications are sent only when the current path matches any of the filters.
         """
         super().__init__()
-        self.roots: Dict[str, str] = roots
+        self.roots: Dict[str, dict] = roots
         self._skip_filters: List[IFilter] = skip_filters
         self._notify_filters: List[IFilter] = notify_filters
         self._observers: List[ICrawlerObserver] = observers
@@ -66,6 +68,7 @@ class FileSystemCrawler(ICrawler):
         self._errored_paths: Dict[str, str] = defaultdict(str)
         self._nb_errored_paths: int = 0
         self._crawled_paths: List[str] = []
+        self._crawled_roots: List[str] = []
         self._crawled_files_size: int = 0
         self._processed_files_size: int = 0
         self._nb_ignored_files: int = 0
@@ -154,6 +157,7 @@ class FileSystemCrawler(ICrawler):
 
     @property
     def crawled_paths(self) -> List[str]:
+        reversed(self._crawled_paths)
         self._crawled_paths = self._crawled_paths[-MAX_LAST_N_ITEMS_TO_KEEP:]
         return self._crawled_paths
 
@@ -207,10 +211,14 @@ class FileSystemCrawler(ICrawler):
         for paths, root_path_dir in self._paths_to_crawl.items():
             if str_path.startswith(str(paths)):
                 return False
-        for pp in self._crawled_paths:
-            if str_path.startswith(pp):
+
+        for pp in self._crawled_roots:
+            if pp.startswith(str_path):
                 return False
+
         self._paths_to_crawl[path] = root_dir
+        if root_dir not in self._crawled_roots:
+            self._crawled_roots.append(root_dir)
         return True
 
     def stop(self):
@@ -355,7 +363,11 @@ class FileSystemCrawler(ICrawler):
 
         try:
             # check the root paths
-            for path, root_dir in self.roots.items():
+            for path, root_obj in self.roots.items():
+                root_dir: str = root_obj.get('root')
+                root_category: ContentCategory = root_obj.get('category', None)
+                root_min_age: ContentClassificationPegi = root_obj.get('min_age', ContentClassificationPegi.EIGHTEEN_OR_MORE)
+                root_target_table: str = root_obj.get('target_table', 'path')
                 if not self._add_path(Path(path), root_dir):
                     logger.warning(f"Not adding path '{path}'")
 
@@ -389,6 +401,8 @@ class FileSystemCrawler(ICrawler):
             entry = path.expanduser().resolve()
             entry_str = str(entry)
             self._crawled_paths.append(entry_str)
+            if len(self._crawled_paths) > MAX_LAST_N_ITEMS_TO_KEEP:
+                self._crawled_paths = self.crawled_paths
 
             if not entry.exists():
                 logger.debug(f"File: '{entry_str}' does not exists. Ignoring.")

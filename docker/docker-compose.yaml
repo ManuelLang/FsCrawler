@@ -5,18 +5,15 @@ services:
     build:
       context: .
     container_name: fs_crawler_db
-    image: mariadb:latest
-    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    image: postgres:16.1-alpine3.19
     restart: always
     ports:
-      - 3306:3306
+      - 5432:5432
     env_file:
       - .env
-    environment:
-      - MARIADB_AUTO_UPGRADE=1
     volumes:
       - ./init_scripts/1.init.sql:/docker-entrypoint-initdb.d/1.init.sql
-      - /media/sa-nas/docker_vol_db/maria_db/fs_crawler:/var/lib/mysql
+      - /media/sa-nas/docker_vol_db/postgres/fs_crawler:/var/lib/postgresql
 
   adminer:
     image: adminer

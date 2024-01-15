@@ -10,7 +10,7 @@ import logging
 from contextlib import contextmanager
 from typing import List, Dict
 
-import mysql.connector as database
+import psycopg2 as database
 from loguru import logger
 
 from app.config import config
@@ -42,7 +42,7 @@ class PathDataManager:
             port=config.DATABASE_PORT,
             database=config.DATABASE_NAME
         )
-        cursor = connection.cursor(buffered=True, *args, **kwargs)
+        cursor = connection.cursor()
         try:
             yield cursor
         finally:
@@ -71,11 +71,11 @@ class PathDataManager:
         return path is not None
 
     def _find_paths(self, column: str, operator: str, value, offset: int = 0, limit: int = 20) -> List[PathModel]:
-        sql_statement: str = f'SELECT id, `path`, extension, name, owner, `group`, root, drive, size, ' \
+        sql_statement: str = f'SELECT id, path, extension, name, owner, "group", root, drive, size, ' \
                              f'hash, is_windows_path, hidden, archive, compressed, encrypted, ' \
-                             f'offline, readonly, `system`, `temporary`, content_family, mime_type, path_type, ' \
+                             f'offline, readonly, system, temporary, content_family, mime_type, path_type, ' \
                              f'path_stage, date_created, date_updated ' \
-                             f'FROM `path` ' \
+                             f'FROM path ' \
                              f"WHERE {column} {operator} %s " \
                              f'LIMIT %s OFFSET %s'
         if isinstance(value, str):
@@ -109,15 +109,15 @@ class PathDataManager:
                     path_model.drive = row[7]
                     path_model.size = row[8]
                     path_model.hash = row[9]
-                    path_model.is_windows_path = row[10].decode()
-                    path_model.hidden = row[11].decode()
-                    path_model.archive = row[12].decode()
-                    path_model.compressed = row[13].decode()
-                    path_model.encrypted = row[14].decode()
-                    path_model.offline = row[15].decode()
-                    path_model.readonly = row[16].decode()
-                    path_model.system = row[17].decode()
-                    path_model.temporary = row[18].decode()
+                    path_model.is_windows_path = row[10]
+                    path_model.hidden = row[11]
+                    path_model.archive = row[12]
+                    path_model.compressed = row[13]
+                    path_model.encrypted = row[14]
+                    path_model.offline = row[15]
+                    path_model.readonly = row[16]
+                    path_model.system = row[17]
+                    path_model.temporary = row[18]
                     path_model.content_family = ContentFamily(row[19]) if row[19] else None
                     path_model.mime_type = row[20]
                     path_model.path_stage = PathStage(row[22]) if row[22] else None
@@ -147,12 +147,12 @@ class PathDataManager:
         return self._find_paths(column='hash', operator='=', value=hash)
 
     def find_duplicates(self) -> Dict[str, List]:
-        sql_statement: str = ('Select p.size, p.hash, p.`path` '
-                              'FROM `path` p '
-                              'Inner Join `path` p1 on p.size = p1.size '
-                              ' AND p.hash = p1.hash AND p.`path` <> p1.`path` '
+        sql_statement: str = ('Select p.size, p.hash, p.path '
+                              'FROM path p '
+                              'Inner Join path p1 on p.size = p1.size '
+                              ' AND p.hash = p1.hash AND p.path <> p1.path '
                               'Where p.hash <> '' AND p.hash IS NOT NULL '
-                              'Order By p.size DESC, p.hash, p.`path`')
+                              'Order By p.size DESC, p.hash, p.path')
         result: Dict[str, List] = {}
         try:
             with self.cursor() as cur:
@@ -171,20 +171,20 @@ class PathDataManager:
         return result
 
     def save_path(self, path_model: PathModel) -> None:
-        sql_statement: str = f'INSERT INTO `path` (`path`, extension, name, owner, `group`, root, drive, size, ' \
+        sql_statement: str = f'INSERT INTO path (path, extension, name, owner, "group", root, drive, size, ' \
                              f'hash, is_windows_path, hidden, archive, compressed, encrypted, offline, ' \
-                             f'readonly, `system`, `temporary`, content_family, mime_type, path_type, files_in_dir, tags, content_rating, path_stage) ' \
+                             f'readonly, system, temporary, content_family, mime_type, path_type, files_in_dir, tags, content_rating, path_stage) ' \
                              f'VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ' \
-                             f'%s, %s, %s, %s, %s, %s)' \
-                             f'ON DUPLICATE KEY UPDATE extension=VALUES(extension), name=VALUES(name), ' \
-                             f'owner=VALUES(owner), `group`=VALUES(`group`), root=VALUES(root), drive=VALUES(drive), ' \
-                             f'size=VALUES(size), hash=VALUES(hash), ' \
-                             f'is_windows_path=VALUES(is_windows_path), hidden=VALUES(hidden), archive=VALUES(archive), ' \
-                             f'compressed=VALUES(compressed), encrypted=VALUES(encrypted), offline=VALUES(offline), ' \
-                             f'readonly=VALUES(readonly), `system`=VALUES(`system`), `temporary`=VALUES(`temporary`), ' \
-                             f'content_family=VALUES(content_family), mime_type=VALUES(mime_type), ' \
-                             f'path_type=VALUES(path_type), path_stage=VALUES(path_stage), tags=VALUES(tags), content_rating=VALUES(content_rating), ' \
-                             f'files_in_dir=VALUES(files_in_dir), date_updated=sysdate()'
+                             f'%s, %s, %s, %s, %s, %s) ' \
+                             f'ON CONFLICT(path) DO UPDATE SET extension=EXCLUDED.extension, name=EXCLUDED.name, ' \
+                             f'owner=EXCLUDED.owner, "group"=EXCLUDED."group", root=EXCLUDED.root, drive=EXCLUDED.drive, ' \
+                             f'size=EXCLUDED.size, hash=EXCLUDED.hash, ' \
+                             f'is_windows_path=EXCLUDED.is_windows_path, hidden=EXCLUDED.hidden, archive=EXCLUDED.archive, ' \
+                             f'compressed=EXCLUDED.compressed, encrypted=EXCLUDED.encrypted, offline=EXCLUDED.offline, ' \
+                             f'readonly=EXCLUDED.readonly, system=EXCLUDED.system, temporary=EXCLUDED.temporary, ' \
+                             f'content_family=EXCLUDED.content_family, mime_type=EXCLUDED.mime_type, ' \
+                             f'path_type=EXCLUDED.path_type, path_stage=EXCLUDED.path_stage, tags=EXCLUDED.tags, content_rating=EXCLUDED.content_rating, ' \
+                             f'files_in_dir=EXCLUDED.files_in_dir, date_updated=now()'
         try:
             params = (path_model.full_path, path_model.extension, path_model.name, path_model.owner,
                       path_model.group, path_model.path_root, path_model.drive, path_model.size,

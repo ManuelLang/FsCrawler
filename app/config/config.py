@@ -50,7 +50,7 @@ DEBUG: bool = config("DEBUG", cast=bool, default=False)
 DATABASE_HOST: str = config("DATABASE_HOST",
                             default='192.168.1.25')
 DATABASE_PORT: str = config("DATABASE_PORT",
-                            default='3306')
+                            default='5432')
 DATABASE_USER: str = config("DATABASE_USER", default='admin')
 
 DATABASE_PASSWORD: str = config("DATABASE_PASSWORD", default='Welcome123!')
@@ -60,7 +60,7 @@ if not DATABASE_PASSWORD:
 
 DATABASE_NAME: str = config("DATABASE_NAME", default='fs_crawler')
 
-DATABASE_URL: str = config("DB_CONNECTION", default='mysql+pymysql://{user}:{password}@{host}:{port}/{db}'
+DATABASE_URL: str = config("DB_CONNECTION", default='postgresql://{user}:{password}@{host}:{port}/{db}'
                            .format(user=quote(DATABASE_USER), password=DATABASE_PASSWORD, host=DATABASE_HOST,
                                    port=DATABASE_PORT, db=DATABASE_NAME))
 
@@ -126,6 +126,6 @@ logging.getLogger('requests').setLevel(logging.INFO if DEBUG else logging.ERROR)
 logging.getLogger('urllib3').setLevel(logging.INFO if DEBUG else logging.ERROR)
 logging.getLogger('botocore').setLevel(logging.INFO if DEBUG else logging.WARNING)
 
-QUEUE_MAX_SIZE: int = config("QUEUE_MAX_SIZE", default=20000)
+QUEUE_MAX_SIZE: int = config("QUEUE_MAX_SIZE", default=200000)
 QUEUE_MIN_SIZE: int = config("QUEUE_MIN_SIZE", default=100)
 QUEUE_WAIT_TIME: int = config("QUEUE_WAIT_TIME", cast=int, default=10)  # seconds to wait for queue to get new items when empty

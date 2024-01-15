@@ -38,13 +38,14 @@ class RegexPatternFilter(Filter):
         if not self.can_process(crawler, path):
             return False
 
+        str_path = str(path)
         if self.excluded_path_pattern:
-            if self.excluded_path_pattern.match(str(path)):
+            if self.excluded_path_pattern.findall(str_path) or self.excluded_path_pattern.pattern.replace('\\', '') in str_path:
                 logger.debug(f"Skipping path {path}: excluded by pattern {self.excluded_path_pattern}")
                 return False
 
         if self.authorized_path_pattern:
-            if not self.authorized_path_pattern.match(str(path)):
+            if not self.authorized_path_pattern.findall(str_path) or self.authorized_path_pattern.pattern.replace('\\', '') in str_path:
                 logger.debug(f"Skipping path {path}: not allowed by pattern {self.authorized_path_pattern}")
                 return False
 

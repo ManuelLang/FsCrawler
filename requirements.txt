@@ -8,9 +8,6 @@ tika
 PyPDF2
 PyMuPDF
 thumbnail
-mysql-connector-python
-mysqlclient
-pymysql
 python-magic
 starlette
 click
@@ -21,3 +18,4 @@ loguru
 more_itertools
 libmagic
 xxhash
+psycopg2
