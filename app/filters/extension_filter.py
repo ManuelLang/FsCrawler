@@ -1,40 +1,58 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
-
+from os import DirEntry, stat_result
 from pathlib import Path
 from typing import List
 
 from loguru import logger
+from multipledispatch import dispatch
 
-from app.filters.filter import Filter
-from app.interfaces.iCrawler import ICrawler
+from filters.filter import Filter
+from interfaces.iCrawler import ICrawler
 
 
 class ExtensionFilter(Filter):
 
-    def __init__(self, authorized_extensions: List[str] = [], excluded_extensions: List[str] = []) -> None:
+    def __init__(self, authorized_extensions: set[str] = {}, excluded_extensions: set[str] = {}) -> None:
         super().__init__()
         self.authorized_extensions = authorized_extensions
         self.excluded_extensions = excluded_extensions
 
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
-        """
-        :return:
-        """
-        if not self.can_process(crawler, path):
-            return False
+    # @dispatch(Path)
+    # def authorize(self, path: Path) -> bool:
+    #     """
+    #     :return:
+    #     """
+    #     if path.is_dir():
+    #         return True     # Crawl files inside directories
+    #
+    #     if not self.can_process(path):
+    #         return False
+    #
+    #     extension = path.suffix[1:] if path.suffix.startswith('.') else path.suffix
+    #     if self.excluded_extensions:
+    #         if path.suffix in self.excluded_extensions or path.suffix != extension and extension in self.excluded_extensions:
+    #             logger.info(f"Skipping path {path}: excluded by extensions {self.excluded_extensions}")
+    #             return False
+    #
+    #     if self.authorized_extensions:
+    #         if path.suffix not in self.authorized_extensions and extension not in self.authorized_extensions:
+    #             logger.info(f"Skipping path {path}: not allowed by extensions {self.authorized_extensions}")
+    #             return False
+    #     # logger.debug(f"ExtensionFilter: Authorizing path {path}")
+    #     return True
 
+    def authorize(self, entry: DirEntry, stat: stat_result = None):
+        file_extension = str(entry.name.split('.')[-1]).lower()
         if self.excluded_extensions:
-            extension = path.suffix[1:] if path.suffix.startswith('.') else path.suffix
-            if path.suffix in self.excluded_extensions or path.suffix != extension and extension in self.excluded_extensions:
-                logger.debug(f"Skipping path {path}: excluded by extensions {self.excluded_extensions}")
+            if file_extension in self.excluded_extensions:
+                logger.info(f"Skipping path {entry.path}: excluded by extensions {self.excluded_extensions}")
                 return False
 
         if self.authorized_extensions:
-            if path.suffix in self.authorized_extensions:
-                logger.debug(f"Skipping path {path}: not allowed by extensions {self.authorized_extensions}")
+            if file_extension not in self.authorized_extensions:
+                logger.info(f"Skipping path {entry.path}: not allowed by extensions {self.authorized_extensions}")
                 return False
-
         return True
 
     def to_json(self) -> dict:

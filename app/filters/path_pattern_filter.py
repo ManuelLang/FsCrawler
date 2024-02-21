@@ -1,13 +1,14 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
-
+from os import DirEntry, stat_result
 from pathlib import Path
 
 from loguru import logger
+from multipledispatch import dispatch
 
-from app.filters.filter import Filter
-from app.helpers.serializationHelper import JsonDumper
-from app.interfaces.iCrawler import ICrawler
+from filters.filter import Filter
+from helpers.serializationHelper import JsonDumper
+from interfaces.iCrawler import ICrawler
 
 
 class PatternFilter(Filter):
@@ -22,24 +23,43 @@ class PatternFilter(Filter):
         super().__init__()
         self.authorized_path_pattern = authorized_path_pattern
         self.excluded_path_pattern = excluded_path_pattern
-
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
+    #
+    # @dispatch(Path)
+    # def authorize(self, path: Path) -> bool:
+    #     """
+    #     :return:
+    #     """
+    #     if not self.can_process(path):
+    #         return False
+    #
+    #     if self.excluded_path_pattern:
+    #         if path.match(self.excluded_path_pattern):
+    #             logger.info(f"Skipping path {path}: excluded by pattern {self.excluded_path_pattern}")
+    #             return False
+    #
+    #     if self.authorized_path_pattern:
+    #         if not path.match(self.authorized_path_pattern):
+    #             logger.info(f"Skipping path {path}: not allowed by pattern {self.authorized_path_pattern}")
+    #             return False
+    #     return True
+    #
+    # @dispatch(DirEntry, stat_result)
+    def authorize(self, entry: DirEntry, stat: stat_result = None):
         """
         :return:
         """
-        if not self.can_process(crawler, path):
+        if not self.can_process(entry, stat):
             return False
 
         if self.excluded_path_pattern:
-            if path.match(self.excluded_path_pattern):
-                logger.debug(f"Skipping path {path}: excluded by pattern {self.excluded_path_pattern}")
+            if self.excluded_path_pattern in entry.path:
+                logger.info(f"Skipping path {entry.path}: excluded by pattern {self.excluded_path_pattern}")
                 return False
 
         if self.authorized_path_pattern:
-            if not path.match(self.authorized_path_pattern):
-                logger.debug(f"Skipping path {path}: not allowed by pattern {self.authorized_path_pattern}")
+            if self.authorized_path_pattern not in entry.path:
+                logger.info(f"Skipping path {entry.path}: not allowed by pattern {self.authorized_path_pattern}")
                 return False
-
         return True
 
     def to_json(self) -> dict:

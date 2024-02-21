@@ -11,7 +11,7 @@ from loguru import logger
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings
 
-from app.helpers.logging import InterceptHandler
+from helpers.logging import InterceptHandler
 
 VERSION = "0.0.1"
 

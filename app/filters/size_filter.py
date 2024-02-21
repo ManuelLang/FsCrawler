@@ -2,14 +2,16 @@
 #  Software under GNU AGPLv3 licence
 
 import sys
+from os import DirEntry, stat_result
 from pathlib import Path
 
 from loguru import logger
+from multipledispatch import dispatch
 
-from app.filters.filter import Filter
-from app.interfaces.iCrawler import ICrawler
+from filters.filter import Filter
+from interfaces.iCrawler import ICrawler
 
-from app.helpers.filesize_helper import format_file_size
+from helpers.filesize_helper import format_file_size
 
 
 class SizeFilter(Filter):
@@ -19,17 +21,34 @@ class SizeFilter(Filter):
         self.min_size_in_bytes = min_size_in_bytes
         self.max_size_in_bytes = max_size_in_bytes
 
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
+    @dispatch(Path)
+    def authorize(self, path: Path) -> bool:
         """
         :return:
         """
-        if not self.can_process(crawler, path):
+        if not self.can_process(path):
             return False
 
         size = path.lstat().st_size
         authorized = self.min_size_in_bytes <= size <= self.max_size_in_bytes
         if not authorized:
             logger.debug(f"Skipping path {path}: size is {format_file_size(size)} (min allowed: {format_file_size(self.min_size_in_bytes)}, "
+                         f"max allowed: {format_file_size(self.max_size_in_bytes)})")
+        return authorized
+
+    @dispatch(DirEntry, stat_result)
+    def authorize(self, entry: DirEntry, stat: stat_result = None):
+        """
+        :return:
+        """
+        if not self.can_process(entry):
+            return False
+        if not stat:
+            return False
+        size = stat.st_size
+        authorized = self.min_size_in_bytes <= size <= self.max_size_in_bytes
+        if not authorized:
+            logger.debug(f"Skipping path {entry.path}: size is {format_file_size(size)} (min allowed: {format_file_size(self.min_size_in_bytes)}, "
                          f"max allowed: {format_file_size(self.max_size_in_bytes)})")
         return authorized
 

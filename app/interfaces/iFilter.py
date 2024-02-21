@@ -2,9 +2,12 @@
 #  Software under GNU AGPLv3 licence
 
 from abc import ABC, abstractmethod
+from os import DirEntry, stat_result
 from pathlib import Path
 
-from app.interfaces.iCrawler import ICrawler
+from multipledispatch import dispatch
+
+from interfaces.iCrawler import ICrawler
 
 
 class IFilter(ABC):
@@ -16,10 +19,22 @@ class IFilter(ABC):
                 hasattr(subclass, 'authorize') and
                 callable(subclass.authorize))
 
+    @dispatch(Path)
     @abstractmethod
-    def can_process(self, crawler: ICrawler, path: Path) -> bool:
+    def can_process(self, path: Path) -> bool:
         pass
 
+    @dispatch(DirEntry, stat_result)
     @abstractmethod
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
+    def authorize(self, entry: DirEntry, stat: stat_result = None) -> bool:
+        pass
+
+    @dispatch(Path)
+    @abstractmethod
+    def can_process(self, path: Path) -> bool:
+        pass
+
+    @dispatch(DirEntry, stat_result)
+    @abstractmethod
+    def authorize(self, entry: DirEntry, stat: stat_result = None):
         pass

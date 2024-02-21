@@ -1,12 +1,13 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
-
+from os import DirEntry, stat_result
 from pathlib import Path
 
 from loguru import logger
+from multipledispatch import dispatch
 
-from app.filters.filter import Filter
-from app.interfaces.iCrawler import ICrawler
+from filters.filter import Filter
+from interfaces.iCrawler import ICrawler
 
 
 class DepthFilter(Filter):
@@ -16,17 +17,35 @@ class DepthFilter(Filter):
         self.max_depth = max_depth
         self.root_dir_path = root_dir_path
 
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
+    @dispatch(Path)
+    def authorize(self, path: Path) -> bool:
         """
         :return:
         """
-        if not self.can_process(crawler, path):
+        if not self.can_process(path):
             return False
 
         depth = len(path.relative_to(self.root_dir_path).parts)
 
         if 0 < self.max_depth < depth:
             logger.debug(f"Skipping path {path}: above max allowed depth {self.max_depth} (current: {depth})")
+            return False
+        return True
+
+    @dispatch(DirEntry, stat_result)
+    def authorize(self, entry: DirEntry, stat: stat_result = None):
+        """
+        :return:
+        """
+        if not self.can_process(entry):
+            return False
+
+        relative_path = entry.path.replace(self.root_dir_path, '')
+        parts = [x for x in relative_path.split('/') if x]
+
+        depth = len(parts)
+        if 0 < self.max_depth < depth:
+            logger.debug(f"Skipping path {entry.path}: above max allowed depth {self.max_depth} (current: {depth})")
             return False
         return True
 

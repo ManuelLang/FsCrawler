@@ -1,6 +1,8 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
 
+from typing import Dict, List
+
 from loguru import logger
 
 from crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
@@ -14,50 +16,64 @@ from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
 from crawler.events.fileFoundEventArgs import FileFoundEventArgs
 from crawler.events.pathFoundEventArgs import PathFoundEventArgs
 from crawler.events.pathSkippedEventArgs import PathSkippedEventArgs
-from interfaces.iCrawlerObserver import ICrawlerObserver
-
 from helpers.filesize_helper import format_file_size
+from interfaces.iCrawlerObserver import ICrawlerObserver
+from interfaces.iPathProcessor import IPathProcessor
+from models.path import PathModel
+from models.path_type import PathType
 
 
-class LoggingObserver(ICrawlerObserver):
+class EmptyDirectoryObserver(ICrawlerObserver):
+
+    def __init__(self):
+        super().__init__()
+        self.empty_dirs = []
 
     def crawl_starting(self, crawl_event: CrawlStartingEventArgs):
-        logger.info(f"Crawl started at: {crawl_event.crawler.start_time.isoformat()}")
+        pass
 
     def path_found(self, crawl_event: PathFoundEventArgs):
-        super().path_found(crawl_event)
+        pass
 
     def path_skipped(self, crawl_event: PathSkippedEventArgs):
-        super().path_skipped(crawl_event)
+        pass
 
     def processing_file(self, crawl_event: FileFoundEventArgs):
-        super().processing_file(crawl_event)
+        pass
 
     def processed_file(self, crawl_event: FileCrawledEventArgs):
-        super().processed_file(crawl_event)
-        logger.info(f"Found file {crawl_event.path}: {format_file_size(crawl_event.size)}")
+        pass
 
     def processing_directory(self, crawl_event: DirectoryFoundEventArgs):
-        super().processing_directory(crawl_event)
+        pass
 
     def processed_directory(self, crawl_event: DirectoryCrawledEventArgs):
-        super().processed_directory(crawl_event)
-        logger.info(f"Found dir {crawl_event.path}: {crawl_event.size} ({crawl_event.files_in_dir}) files")
+        empty_dir = crawl_event.files_in_dir < 1 and crawl_event.size < 1
+        if not empty_dir and crawl_event.file_names and len(crawl_event.file_names) == 1:
+            # https://stackoverflow.com/questions/15835213/list-of-various-system-files-safe-to-ignore-when-implementing-a-virtual-file-sys
+            empty_dir = crawl_event.file_names[0] in ['.DS_Store', '._.DS_Store', 'Thumbs.db', 'thumbs.db', 'Desktop.ini', 'desktop.ini', '@easyno', 'ehthumbs.db']
+        full_path = str(crawl_event.path)
+        if empty_dir and full_path not in self.empty_dirs:
+            self.empty_dirs.append(full_path)
 
     def crawl_progress(self, crawl_event: CrawlProgessEventArgs):
-        logger.info(f"Crawled so far:"
-                    f"\n\t- paths found: {len(crawl_event.crawler.paths_found)}"
-                    f"\n\t- paths skipped: {len(crawl_event.crawler.paths_skipped)}"
-                    f"\n\t- directories processed: {len(crawl_event.crawler.directories_processed)}"
-                    f"\n\t- files processed: {len(crawl_event.crawler.files_processed)}"
-                    f"\n\t- total crawled paths: {len(crawl_event.crawler.crawled_paths)}"
-                    f"\n\t- total processed file size: {format_file_size(crawl_event.crawler.crawled_files_size)}")
+        pass
 
     def crawl_error(self, crawl_event: CrawlErrorEventArgs):
-        logger.info(f"Error while scrawling path '{crawl_event.path}': {crawl_event.error}")
+        pass
 
     def crawl_stopped(self, crawl_event: CrawlStoppedEventArgs):
-        logger.info(f"Crawl stopped at: {crawl_event.crawler.end_time.isoformat()}")
+        pass
 
     def crawl_completed(self, crawl_event: CrawlCompletedEventArgs):
-        logger.info(f"Crawl completed at: {crawl_event.crawler.end_time.isoformat()}")
+        if self.empty_dirs:
+            msg = "Found empty directories (top 50):\n"
+            i: int = 0
+            for dir_name in self.empty_dirs:
+                i += 1
+                if i > 50:
+                    break
+                msg += f"{i:02} {dir_name}\n"
+            logger.warning(msg)
+
+

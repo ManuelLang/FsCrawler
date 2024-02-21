@@ -2,48 +2,44 @@
 #  Software under GNU AGPLv3 licence
 
 import datetime
+from os import DirEntry, stat_result
 from pathlib import Path
 
 import pytz
 from loguru import logger
 
-from app.filters.filter import Filter
-from app.interfaces.iCrawler import ICrawler
+from filters.filter import Filter
+from interfaces.iCrawler import ICrawler
+from multipledispatch import dispatch
 
 
-class DepthFilter(Filter):
+class DateFilter(Filter):
 
     def __init__(self, attribute_filter: str = '',
                  min_date: datetime.datetime = None,
                  max_date: datetime.datetime = None) -> None:
         """
         :param attribute_filter: One of the attributes to filter on:
-        st_mode: int  # protection bits,
-        st_ino: int  # inode number,
-        st_dev: int  # device,
-        st_nlink: int  # number of hard links,
-        st_uid: int  # user id of owner,
-        st_gid: int  # group id of owner,
-        st_size: int  # size of file, in bytes,
         st_atime: float  # time of most recent access,
         st_mtime: float  # time of most recent content modification,
         st_ctime: float  # platform dependent (time of most recent metadata change on Unix, or the time of creation on Windows)
         st_atime_ns: int  # time of most recent access, in nanoseconds
         st_mtime_ns: int  # time of most recent content modification in nanoseconds
         st_ctime_ns: int  # platform dependent (time of most recent metadata change on Unix, or the time of creation on Windows) in nanoseconds
-        :param min_date:
-        :param max_date:
+        :param min_date: the earliest date allowed
+        :param max_date: the latest date allowed
         """
         super().__init__()
         self.attribute_filter: str = attribute_filter
         self.min_date: datetime.datetime = min_date.replace(tzinfo=pytz.UTC) if min_date else None
         self.max_date: datetime.datetime = max_date.replace(tzinfo=pytz.UTC) if max_date else None
 
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
+    @dispatch(Path)
+    def authorize(self, path: Path) -> bool:
         """
         :return:
         """
-        if not self.can_process(crawler, path):
+        if not self.can_process(path):
             return False
 
         date_value = None
@@ -62,6 +58,30 @@ class DepthFilter(Filter):
 
         if self.max_date and path_date > self.max_date:
             logger.debug(f"Skipping path {path}: after allowed max date {self.max_date.isoformat()} "
+                         f"(current: {path_date.isoformat()})")
+            return False
+        return True
+
+    @dispatch(DirEntry, stat_result)
+    def authorize(self, entry: DirEntry, stat: stat_result = None):
+        if not entry:
+            return False
+        if not stat:
+            return True
+
+        date_value = None
+        if hasattr(stat, self.attribute_filter):
+            date_value = getattr(stat, self.attribute_filter)
+        if not date_value:
+            return True
+        path_date = datetime.datetime.fromtimestamp(date_value / 1e9).replace(tzinfo=pytz.UTC)
+        if self.min_date and path_date < self.min_date:
+            logger.debug(f"Skipping path {entry.path}: before allowed min date {self.min_date.isoformat()} "
+                         f"(current: {path_date.isoformat()})")
+            return False
+
+        if self.max_date and path_date > self.max_date:
+            logger.debug(f"Skipping path {entry.path}: after allowed max date {self.max_date.isoformat()} "
                          f"(current: {path_date.isoformat()})")
             return False
         return True

@@ -10,7 +10,7 @@ from typing import List, Dict
 from loguru import logger
 
 from config import config
-from app.helpers.filesize_helper import format_file_size
+from helpers.filesize_helper import format_file_size
 from crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
 from crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
 from crawler.events.crawlerEventArgs import CrawlerEventArgs

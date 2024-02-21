@@ -20,9 +20,9 @@ from crawler.events.pathFoundEventArgs import PathFoundEventArgs
 from crawler.events.pathSkippedEventArgs import PathSkippedEventArgs
 from interfaces.iCrawlerObserver import ICrawlerObserver
 
-from app.models.path import PathModel
+from models.path import PathModel
 
-from app.helpers.filesize_helper import format_file_size
+from helpers.filesize_helper import format_file_size
 
 
 class MetricsObserver(ICrawlerObserver):

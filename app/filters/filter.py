@@ -1,12 +1,13 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
-
+from os import DirEntry, stat_result
 from pathlib import Path
 
 from loguru import logger
+from multipledispatch import dispatch
 
-from app.helpers.serializationHelper import JsonDumper
-from app.interfaces.iFilter import IFilter
+from helpers.serializationHelper import JsonDumper
+from interfaces.iFilter import IFilter
 from interfaces.iCrawler import ICrawler
 
 
@@ -19,14 +20,27 @@ class Filter(IFilter):
                 hasattr(subclass, 'authorize') and
                 callable(subclass.authorize))
 
-    def can_process(self, crawler: ICrawler, path: Path) -> bool:
-        can_process = True if path and path.exists() else False
+    # @dispatch(Path)
+    # def can_process(self, path: Path) -> bool:
+    #     can_process = True if path else False
+    #     if not can_process:
+    #         logger.warning(f"Not a valid path: {path}")
+    #     return can_process
+    #
+    # @dispatch(DirEntry, stat_result)
+    def can_process(self, entry: DirEntry, stat: stat_result = None) -> bool:
+        can_process = True if entry else False
         if not can_process:
-            logger.info(f"Not a valid path: {path}")
+            logger.warning(f"Not a valid entry: {entry.path}")
         return can_process
 
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
-        return self.can_process(crawler, path)
+    @dispatch(Path)
+    def authorize(self, path: Path) -> bool:
+        return self.can_process(path)
+
+    @dispatch(DirEntry, stat_result)
+    def authorize(self, entry: DirEntry, stat: stat_result = None):
+        return self.can_process(entry)
 
     def to_json(self) -> dict:
         return {}

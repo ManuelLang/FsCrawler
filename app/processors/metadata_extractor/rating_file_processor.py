@@ -27,7 +27,7 @@ class RatingFileProcessor(IPathProcessor):
             rating = min(int(counter), Rating.EXCELLENT.value)
             if rating > 0:
                 path_model.content_rating = Rating(rating)
-                logger.info(f"Found rating: {path_model.content_rating}\n{path_model.full_path}")
+                logger.info(f"Found rating: {path_model.content_rating} ({path_model.name})")
         logger.debug(f"Done fetching file's rating: {path_model.content_rating}\n{path_model.full_path}")
 
 

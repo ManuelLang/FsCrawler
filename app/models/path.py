@@ -12,9 +12,9 @@ from models.content import ContentFamily
 from models.path_stage import PathStage
 from models.path_type import PathType
 
-from app.models.rating import Rating
+from models.rating import Rating
 
-from app.models.content import ContentClassificationPegi, ContentCategory
+from models.content import ContentClassificationPegi, ContentCategory
 
 
 class PathModel(ABC):
@@ -218,5 +218,11 @@ class PathModel(ABC):
 
     def to_json(self):
         props = self.__dict__.copy()
-        props['path_stage'] = self.path_stage.name
+        props['path_stage'] = self.path_stage.name if self.path_stage else ''
+        props['path_type'] = self.path_type.name if self.path_type else ''
         return props
+
+    def __str__(self):
+        return f"{self.path} ({self.size})"
+
+

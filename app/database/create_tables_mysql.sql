@@ -40,7 +40,10 @@ INSERT INTO `content_category` (id, name) VALUES (4, 'ANIME');
 INSERT INTO `content_category` (id, name) VALUES (5, 'SERIES');
 INSERT INTO `content_category` (id, name) VALUES (6, 'PHOTO');
 INSERT INTO `content_category` (id, name) VALUES (7, 'PAPER');
-INSERT INTO `content_category` (id, name) VALUES (8, 'ADULT');
+INSERT INTO `content_category` (id, name) VALUES (8, 'CODE');
+INSERT INTO `content_category` (id, name) VALUES (9, 'ADULT');
+INSERT INTO `content_category` (id, name) VALUES (10, 'GAME');
+INSERT INTO `content_category` (id, name) VALUES (11, 'APP');
 
 CREATE TABLE IF NOT EXISTS `rating`
 (

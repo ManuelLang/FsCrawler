@@ -14,16 +14,16 @@ from loguru import logger
 root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_folder)
 
-from app.helpers.filesize_helper import format_file_size
-from app.crawler.file_system_crawler import FileSystemCrawler
-from app.crawling_queue_consumer import CrawlingQueueConsumer
-from app.filters.path_pattern_filter import PatternFilter
-from app.interfaces.iFilter import IFilter
-from app.interfaces.iPathProcessor import IPathProcessor
-from app.observers.metrics_observer import MetricsObserver
-from app.observers.queue_observer import QueueObserver
-from app.processors.copy_path_processor import CopyPathProcessor
-from app.processors.delete_path_processor import DeletePathProcessor
+from helpers.filesize_helper import format_file_size
+from crawler.file_system_crawler import FileSystemCrawler
+from crawling_queue_consumer import CrawlingQueueConsumer
+from filters.path_pattern_filter import PatternFilter
+from interfaces.iFilter import IFilter
+from interfaces.iPathProcessor import IPathProcessor
+from observers.metrics_observer import MetricsObserver
+from observers.queue_observer import QueueObserver
+from processors.copy_path_processor import CopyPathProcessor
+from processors.delete_path_processor import DeletePathProcessor
 
 roots: dict = {
     f"{Path.home()}/Downloads": f"{Path.home()}/"  # Path, Root part from the mapped volume

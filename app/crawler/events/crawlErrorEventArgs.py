@@ -3,8 +3,8 @@
 
 from pathlib import Path
 
-from app.helpers.serializationHelper import JsonDumper
-from app.interfaces.iCrawler import ICrawler
+from helpers.serializationHelper import JsonDumper
+from interfaces.iCrawler import ICrawler
 from crawler.events.crawlerEventArgs import CrawlerEventArgs
 
 

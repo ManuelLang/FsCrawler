@@ -6,10 +6,10 @@ from typing import List
 
 from loguru import logger
 
-from app.filters.filter import Filter
-from app.helpers.serializationHelper import JsonDumper
-from app.interfaces.iCrawler import ICrawler
-from app.interfaces.iFilter import IFilter
+from filters.filter import Filter
+from helpers.serializationHelper import JsonDumper
+from interfaces.iCrawler import ICrawler
+from interfaces.iFilter import IFilter
 
 
 class OrFilter(Filter):
@@ -20,11 +20,11 @@ class OrFilter(Filter):
             raise ValueError(f"The filters list is mandatory")
         self.filters: List[IFilter] = filters
 
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
+    def authorize(self, path: Path) -> bool:
         """
         :return:
         """
-        if any([f.authorize(crawler=crawler, path=path) for f in self.filters]):
+        if any([f.authorize(path=path) for f in self.filters]):
             return True
         logger.debug(f"Skipping path {path}: excluded by all filters:\n{self.filters}")
         return False

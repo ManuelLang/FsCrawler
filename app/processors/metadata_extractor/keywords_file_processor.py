@@ -18,10 +18,10 @@ if __name__ == '__main__':
 import re
 from loguru import logger
 
-from app.crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
-from app.interfaces.iPathProcessor import IPathProcessor
-from app.models.path import PathModel
-from app.models.path_type import PathType
+from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
+from interfaces.iPathProcessor import IPathProcessor
+from models.path import PathModel
+from models.path_type import PathType
 
 
 class KeywordsFileProcessor(IPathProcessor):
@@ -40,21 +40,15 @@ class KeywordsFileProcessor(IPathProcessor):
                 if path_model.keywords:
                     break
                 path_model.keywords = self.split_words(part)
-                if path_model.keywords:
-                    logger.info(f"Found keywords: {path_model.keywords}\n{path_model.full_path}")
         if not path_model.keywords:
-
-            if path_model.keywords:
-                logger.info(f"Found keywords: {path_model.keywords}\n{path_model.full_path}")
-
             parts = reversed(path_model.name.split('['))
             for part in parts:
                 part = part.replace(']', '')
                 if path_model.keywords:
                     break
                 path_model.keywords = self.split_words(part)
-                if path_model.keywords:
-                    logger.info(f"Found keywords: {path_model.keywords}\n{path_model.full_path}")
+        if path_model.keywords:
+            logger.info(f"Found keywords: {path_model.keywords} ({path_model.name})")
         logger.debug(f"Done fetching file's keywords: {path_model.keywords}\n{path_model.full_path}")
 
     def find_keywords_part(self, path_model: PathModel, part_start: str = '[', part_end: str = ']'):

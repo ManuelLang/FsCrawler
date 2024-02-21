@@ -1,14 +1,16 @@
 #  Copyright (c) 2023. Manuel LANG
 #  Software under GNU AGPLv3 licence
-
+from os import DirEntry, stat_result
 from pathlib import Path
 
 from loguru import logger
 import re
 
-from app.filters.filter import Filter
-from app.helpers.serializationHelper import JsonDumper
-from app.interfaces.iCrawler import ICrawler
+from multipledispatch import dispatch
+
+from filters.filter import Filter
+from helpers.serializationHelper import JsonDumper
+from interfaces.iCrawler import ICrawler
 
 
 class RegexPatternFilter(Filter):
@@ -31,22 +33,41 @@ class RegexPatternFilter(Filter):
         if excluded_path_pattern:
             self.excluded_path_pattern = re.compile(excluded_path_pattern, re.IGNORECASE if ignore_case else 0)
 
-    def authorize(self, crawler: ICrawler, path: Path) -> bool:
-        """
-        :return:
-        """
-        if not self.can_process(crawler, path):
+    # @dispatch(Path)
+    # def authorize(self, path: Path) -> bool:
+    #     """
+    #     :return:
+    #     """
+    #     if not self.can_process(path):
+    #         return False
+    #
+    #     str_path = f"{path}/" if path.is_dir() else str(path)
+    #     if self.excluded_path_pattern:
+    #         if self.excluded_path_pattern.findall(str_path) or self.excluded_path_pattern.pattern.replace('\\', '') in str_path:
+    #             logger.info(f"Skipping path {path}: excluded by pattern {self.excluded_path_pattern}")
+    #             return False
+    #
+    #     if self.authorized_path_pattern:
+    #         if not self.authorized_path_pattern.findall(str_path) and not self.authorized_path_pattern.pattern.replace('\\', '') in str_path:
+    #             logger.info(f"Skipping path {path}: not allowed by pattern {self.authorized_path_pattern}")
+    #             return False
+    #
+    #     return True
+    #
+    # @dispatch(DirEntry, stat_result)
+    def authorize(self, entry: DirEntry, stat: stat_result = None):
+        if not entry:
             return False
 
-        str_path = str(path)
+        str_path = f"{entry.path}/" if entry.is_dir() else str(entry.path)
         if self.excluded_path_pattern:
             if self.excluded_path_pattern.findall(str_path) or self.excluded_path_pattern.pattern.replace('\\', '') in str_path:
-                logger.debug(f"Skipping path {path}: excluded by pattern {self.excluded_path_pattern}")
+                logger.info(f"Skipping path {entry.path}: excluded by pattern {self.excluded_path_pattern}")
                 return False
 
         if self.authorized_path_pattern:
-            if not self.authorized_path_pattern.findall(str_path) or self.authorized_path_pattern.pattern.replace('\\', '') in str_path:
-                logger.debug(f"Skipping path {path}: not allowed by pattern {self.authorized_path_pattern}")
+            if not self.authorized_path_pattern.findall(str_path) and not self.authorized_path_pattern.pattern.replace('\\', '') in str_path:
+                logger.info(f"Skipping path {entry.path}: not allowed by pattern {self.authorized_path_pattern}")
                 return False
 
         return True

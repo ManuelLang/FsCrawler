@@ -8,27 +8,27 @@ from typing import List, Dict
 
 from loguru import logger
 
-from app.config import config
-from app.crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
-from app.crawler.events.crawlErrorEventArgs import CrawlErrorEventArgs
-from app.crawler.events.crawlProgressEventArgs import CrawlProgessEventArgs
-from app.crawler.events.crawlStartingEventArgs import CrawlStartingEventArgs
-from app.crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
-from app.crawler.events.directoryCrawledEventArgs import DirectoryCrawledEventArgs
-from app.crawler.events.directoryFoundEventArgs import DirectoryFoundEventArgs
-from app.crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
-from app.crawler.events.fileFoundEventArgs import FileFoundEventArgs
-from app.crawler.events.pathFoundEventArgs import PathFoundEventArgs
-from app.crawler.events.pathSkippedEventArgs import PathSkippedEventArgs
-from app.helpers.filesize_helper import *
-from app.helpers.serializationHelper import JsonDumper
-from app.interfaces.iCrawler import ICrawler
-from app.interfaces.iCrawlerObserver import ICrawlerObserver
-from app.interfaces.iFilter import IFilter
+from config import config
+from crawler.events.crawlCompletedEventArgs import CrawlCompletedEventArgs
+from crawler.events.crawlErrorEventArgs import CrawlErrorEventArgs
+from crawler.events.crawlProgressEventArgs import CrawlProgessEventArgs
+from crawler.events.crawlStartingEventArgs import CrawlStartingEventArgs
+from crawler.events.crawlStoppedEventArgs import CrawlStoppedEventArgs
+from crawler.events.directoryCrawledEventArgs import DirectoryCrawledEventArgs
+from crawler.events.directoryFoundEventArgs import DirectoryFoundEventArgs
+from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
+from crawler.events.fileFoundEventArgs import FileFoundEventArgs
+from crawler.events.pathFoundEventArgs import PathFoundEventArgs
+from crawler.events.pathSkippedEventArgs import PathSkippedEventArgs
+from helpers.filesize_helper import *
+from helpers.serializationHelper import JsonDumper
+from interfaces.iCrawler import ICrawler
+from interfaces.iCrawlerObserver import ICrawlerObserver
+from interfaces.iFilter import IFilter
 
-from app.helpers.filesize_helper import format_file_size
+from helpers.filesize_helper import format_file_size
 
-from app.models.content import ContentCategory, ContentClassificationPegi
+from models.content import ContentCategory, ContentClassificationPegi
 
 MIN_BLOCK_SIZE = 1024 * 4
 MAX_LAST_N_ITEMS_TO_KEEP = 2000
@@ -54,7 +54,7 @@ class FileSystemCrawler(ICrawler):
         self._notify_filters: List[IFilter] = notify_filters
         self._observers: List[ICrawlerObserver] = observers
         self._require_stop = False
-        self._paths_to_crawl: Dict[Path, str] = {}
+        self._paths_to_crawl: Dict[Path, dict] = {}
 
         # stats
         self._paths_found: List[Path] = []
@@ -200,7 +200,8 @@ class FileSystemCrawler(ICrawler):
     def crawl_in_progress(self) -> bool:
         return self._start_time is not None and self._end_time is None
 
-    def _add_path(self, path: Path, root_dir: str) -> bool:
+    def _add_path(self, path: Path, root_dir: str, root_category: ContentCategory,
+                  root_min_age: ContentClassificationPegi, root_target_table: str) -> bool:
         path = path.expanduser().resolve(strict=True)
         str_path = str(path)
 
@@ -216,7 +217,12 @@ class FileSystemCrawler(ICrawler):
             if pp.startswith(str_path):
                 return False
 
-        self._paths_to_crawl[path] = root_dir
+        self._paths_to_crawl[path] = {
+            'root': root_dir,
+            'category': root_category,
+            'min_age': root_min_age,
+            'target_table': root_target_table,
+        }
         if root_dir not in self._crawled_roots:
             self._crawled_roots.append(root_dir)
         return True
@@ -361,22 +367,25 @@ class FileSystemCrawler(ICrawler):
         logger.info("Start browsing files...")
         self.notify_crawl_starting(crawl_event=CrawlStartingEventArgs(crawler=self))
 
-        try:
-            # check the root paths
-            for path, root_obj in self.roots.items():
-                root_dir: str = root_obj.get('root')
-                root_category: ContentCategory = root_obj.get('category', None)
-                root_min_age: ContentClassificationPegi = root_obj.get('min_age', ContentClassificationPegi.EIGHTEEN_OR_MORE)
-                root_target_table: str = root_obj.get('target_table', 'path')
-                if not self._add_path(Path(path), root_dir):
-                    logger.warning(f"Not adding path '{path}'")
+        # try:
+        # check the root paths
+        for path, root_obj in self.roots.items():
+            root_dir: str = root_obj.get('root')
+            root_category: ContentCategory = root_obj.get('category', None)
+            root_min_age: ContentClassificationPegi = root_obj.get('min_age', ContentClassificationPegi.EIGHTEEN_OR_MORE)
+            root_target_table: str = root_obj.get('target_table', 'path')
+            if not self._add_path(Path(path), root_dir, root_category, root_min_age, root_target_table):
+                logger.warning(f"Not adding path '{path}'")
 
-            for path, root_dir in self._paths_to_crawl.items():
-                path_size, files_in_directory = self.crawl_path(path, root_dir)
-                logger.success(f"Crawled path '{path}' [{format_file_size(path_size)} / {files_in_directory} files]")
-        except Exception as ex:
-            logger.error(ex)
-            self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex))
+        for path, attrs_dict in self._paths_to_crawl.items():
+            path_size, files_in_directory = self.crawl_path(path=path, root_dir=attrs_dict['root'],
+                                                            category=attrs_dict['category'],
+                                                            min_age=attrs_dict['min_age'],
+                                                            target_table=attrs_dict['target_table'])
+            logger.success(f"Crawled path '{path}' [{format_file_size(path_size)} / {files_in_directory} files]")
+        # except Exception as ex:
+        #     logger.error(ex)
+        #     self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex))
 
         self._end_time = datetime.now()
         self.duration = self._end_time - self._start_time
@@ -392,104 +401,107 @@ class FileSystemCrawler(ICrawler):
         else:
             self.notify_crawl_completed(crawl_event=CrawlCompletedEventArgs(crawler=self))
 
-    def crawl_path(self, path: Path, root_dir: str) -> (int, int):
+    def crawl_path(self, path: Path, root_dir: str, category: ContentCategory, min_age: ContentClassificationPegi,
+                   target_table: str) -> (int, int):
         path_size = 0
         files_in_directory = 0
         if self._require_stop:
             return path_size, files_in_directory
-        try:
-            entry = path.expanduser().resolve()
-            entry_str = str(entry)
-            self._crawled_paths.append(entry_str)
-            if len(self._crawled_paths) > MAX_LAST_N_ITEMS_TO_KEEP:
-                self._crawled_paths = self.crawled_paths
+        #try:
+        entry = path.expanduser().resolve()
+        entry_str = str(entry)
+        self._crawled_paths.append(entry_str)
+        if len(self._crawled_paths) > MAX_LAST_N_ITEMS_TO_KEEP:
+            self._crawled_paths = self.crawled_paths
 
-            if not entry.exists():
-                logger.debug(f"File: '{entry_str}' does not exists. Ignoring.")
-                return path_size, files_in_directory
+        if not entry.exists():
+            logger.debug(f"File: '{entry_str}' does not exists. Ignoring.")
+            return path_size, files_in_directory
 
-            self.notify_path_found(crawl_event=PathFoundEventArgs(crawler=self, path=path, root_dir_path=root_dir,
-                                                                  is_dir=None, is_file=None, size=-1))
-            self._nb_processed_paths += 1
-            if entry.is_file():
-                logger.debug(f"Crawling file: '{entry_str}'")
-                files_in_directory = 1
-                file_size = entry.lstat().st_size
-                # size_on_disk = ((int)(file_size / MIN_BLOCK_SIZE)) * MIN_BLOCK_SIZE + MIN_BLOCK_SIZE
-                # path_size = convert_size_to_mb(size_on_disk)
-                path_size = file_size
-                self.notify_processing_file(crawl_event=FileFoundEventArgs(crawler=self, path=entry,
-                                                                           is_dir=entry.is_dir(),
-                                                                           is_file=entry.is_file(),
-                                                                           size=path_size,
-                                                                           root_dir_path=root_dir))
+        self.notify_path_found(crawl_event=PathFoundEventArgs(crawler=self, path=path, root_dir_path=root_dir,
+                                                              is_dir=None, is_file=None, size=-1))
+        self._nb_processed_paths += 1
+        if entry.is_file():
+            logger.debug(f"Crawling file: '{entry_str}'")
+            files_in_directory = 1
+            file_size = entry.lstat().st_size
+            # size_on_disk = ((int)(file_size / MIN_BLOCK_SIZE)) * MIN_BLOCK_SIZE + MIN_BLOCK_SIZE
+            # path_size = convert_size_to_mb(size_on_disk)
+            path_size = file_size
+            self.notify_processing_file(crawl_event=FileFoundEventArgs(crawler=self, path=entry,
+                                                                       size=path_size,
+                                                                       root_dir_path=root_dir))
+        else:
+            if entry.is_dir():
+                logger.debug(f"Crawling directory: '{entry_str}'")
+                self.notify_processing_directory(crawl_event=DirectoryFoundEventArgs(crawler=self, path=entry,
+                                                                                     size=path_size,
+                                                                                     root_dir_path=root_dir))
+        if self._nb_paths_found % 1000 == 0 and self._nb_paths_found > 0:
+            self.notify_crawl_progress(crawl_event=CrawlProgessEventArgs(crawler=self))
+            if config.LOGGING_LEVEL >= config.LOG_LEVEL_WARNING:
+                print(".", end="")  # Show progress indicator
             else:
-                if entry.is_dir():
-                    logger.debug(f"Crawling directory: '{entry_str}'")
-                    self.notify_processing_directory(crawl_event=DirectoryFoundEventArgs(crawler=self, path=entry,
-                                                                                         is_dir=entry.is_dir(),
-                                                                                         is_file=entry.is_file(),
-                                                                                         size=path_size,
-                                                                                         root_dir_path=root_dir))
-            if self._nb_paths_found % 1000 == 0 and self._nb_paths_found > 0:
-                self.notify_crawl_progress(crawl_event=CrawlProgessEventArgs(crawler=self))
-                if config.LOGGING_LEVEL >= config.LOG_LEVEL_WARNING:
-                    print(".", end="")  # Show progress indicator
-                else:
-                    logger.success(f"Found {self._nb_paths_found} paths so far...")
+                logger.success(f"Found {self._nb_paths_found} paths so far...")
 
-            # TODO: consider a more elegant way to achieve this:
-            # if any(not f.authorize(crawler=self, path=entry) for f in self.filters):
-            # But it is hard to debug
-            should_skip = False
-            for f in self.skip_filters:
-                if not f.authorize(crawler=self, path=entry):
-                    should_skip = True
-                    logger.debug(f"should_skip set to True by {f} for path {entry}")
-                    break
-            if should_skip:
-                self.notify_path_skipped(crawl_event=PathSkippedEventArgs(crawler=self, path=entry,
-                                                                          is_dir=entry.is_dir(),
-                                                                          is_file=entry.is_file(),
+        should_skip = False
+        for f in self.skip_filters:
+            if not f.authorize(path=entry):
+                should_skip = True
+                logger.debug(f"should_skip set to True by {f} for path {entry}")
+                break
+        if should_skip:
+            self.notify_path_skipped(crawl_event=PathSkippedEventArgs(crawler=self, path=entry,
+                                                                      is_dir=entry.is_dir(),
+                                                                      is_file=entry.is_file(),
+                                                                      size=path_size,
+                                                                      root_dir_path=root_dir))
+            logger.debug(f"Path '{entry_str}' skipped...")
+            return path_size, files_in_directory
+
+        # FIND mode: notify when path matches any of the notify_filters
+        should_notify = not self._notify_filters
+        for f in self._notify_filters:
+            if f.authorize(path=entry):
+                should_notify = True
+                logger.debug(f"should_notify set to True by {f} for path {entry}")
+                break
+
+        if entry.is_file():
+            logger.debug(f"Found file: '{entry_str}'")
+            if should_notify:
+                self.notify_processed_file(crawl_event=FileCrawledEventArgs(crawler=self, path=entry,
+                                                                            root_dir_path=root_dir,
+                                                                            size=path_size,
+                                                                            root_category=category,
+                                                                            root_min_age=min_age,
+                                                                            root_target_table=target_table))
+        elif entry.is_dir():
+            logger.debug(f"Found directory: '{entry_str}'")
+            dir_direct_children_files: List[str] = []
+            for dir_item in entry.iterdir():
+                if not dir_item.is_dir():
+                    dir_direct_children_files.append(dir_item.name)
+
+                sub_item_size, files_in_sub_directory = self.crawl_path(dir_item, root_dir, category, min_age, target_table)
+                path_size += sub_item_size
+                files_in_directory += files_in_sub_directory
+
+            logger.info(f"Crawled directory '{entry_str}', size: {format_file_size(path_size)}")
+            if should_notify:
+                self.notify_processed_directory(crawl_event=
+                                                DirectoryCrawledEventArgs(crawler=self, path=entry,
                                                                           size=path_size,
-                                                                          root_dir_path=root_dir))
-                logger.debug(f"Path '{entry_str}' skipped...")
-                return path_size, files_in_directory
-
-            # FIND mode: notify when path matches any of the notify_filters
-            should_notify = not self._notify_filters
-            for f in self._notify_filters:
-                if f.authorize(crawler=self, path=entry):
-                    should_notify = True
-                    logger.debug(f"should_notify set to True by {f} for path {entry}")
-                    break
-
-            if entry.is_file():
-                logger.debug(f"Found file: '{entry_str}'")
-                if should_notify:
-                    self.notify_processed_file(crawl_event=FileCrawledEventArgs(crawler=self, path=entry,
-                                                                                is_dir=entry.is_dir(),
-                                                                                is_file=entry.is_file(),
-                                                                                size=path_size,
-                                                                                root_dir_path=root_dir))
-            elif entry.is_dir():
-                logger.debug(f"Found directory: '{entry_str}'")
-                for dir_item in entry.iterdir():
-                    sub_item_size, files_in_sub_directory = self.crawl_path(dir_item, root_dir)
-                    path_size += sub_item_size
-                    files_in_directory += files_in_sub_directory
-
-                logger.info(f"Crawled directory '{entry_str}', size: {format_file_size(path_size)}")
-                if should_notify:
-                    self.notify_processed_directory(crawl_event=
-                                                    DirectoryCrawledEventArgs(crawler=self, path=entry,
-                                                                              size=path_size,
-                                                                              files_in_dir=files_in_directory,
-                                                                              root_dir_path=root_dir))
-        except Exception as ex:
-            logger.error(ex)
-            self._errored_paths[str(path)] = str(ex)
-            self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex, path=path))
+                                                                          files_in_dir=files_in_directory,
+                                                                          root_dir_path=root_dir,
+                                                                          file_names=dir_direct_children_files,
+                                                                          root_category=category,
+                                                                          root_min_age=min_age,
+                                                                          root_target_table=target_table))
+        # except Exception as ex:
+        #     logger.error(ex)
+        #     self._errored_paths[str(path)] = str(ex)
+        #     self.notify_crawl_error(crawl_event=CrawlErrorEventArgs(crawler=self, error=ex, path=path))
         return path_size, files_in_directory
 
     def to_json(self) -> dict:

@@ -6,15 +6,15 @@ from pathlib import Path
 
 from loguru import logger
 
-from app.crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
-from app.helpers.shutil_custom import _ensure_directory, copy2
-from app.interfaces.iPathProcessor import IPathProcessor
-from app.models.path import PathModel
-from app.models.path_type import PathType
-from app.processors.delete_path_processor import DeletePathProcessor
+from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
+from helpers.shutil_custom import _ensure_directory, copy2
+from interfaces.iPathProcessor import IPathProcessor
+from models.path import PathModel
+from models.path_type import PathType
+from processors.delete_path_processor import DeletePathProcessor
 from models.file import FileModel
 
-from app.helpers.filesize_helper import format_file_size
+from helpers.filesize_helper import format_file_size
 
 BUF_SIZE = 64 * 1024 * 100  # lets read stuff in 6,4 Mb chunks!
 

@@ -11,11 +11,11 @@ from loguru import logger
 logger.remove()
 logger.add(sys.stdout, level="INFO")
 
-from app.crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
-from app.interfaces.iPathProcessor import IPathProcessor
-from app.models.path import PathModel
-from app.models.path_type import PathType
-from app.helpers.shutil_custom import _ensure_directory
+from crawler.events.fileCrawledEventArgs import FileCrawledEventArgs
+from interfaces.iPathProcessor import IPathProcessor
+from models.path import PathModel
+from models.path_type import PathType
+from helpers.shutil_custom import _ensure_directory
 
 
 class DeletePathProcessor(IPathProcessor):

@@ -19,3 +19,5 @@ more_itertools
 libmagic
 xxhash
 psycopg2
+urllib3
+
