@@ -2,8 +2,11 @@
 #  Software under GNU AGPLv3 licence
 import time
 
+from models.rating import Rating
+
 if __name__ == '__main__':
     import sys, os
+
     root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     sys.path.append(root_folder)
 
@@ -116,10 +119,14 @@ class PathDataManager:
                                          f"nor a dictionary. Row: {row}")
                     path_model.id = row[0]
                     path_model.extension = row[2]
-                    path_model.name = row[3]
-                    path_model.owner = row[4]
-                    path_model.group = row[5]
-                    path_model.drive = row[7]
+                    if not path_model.name:
+                        path_model.name = row[3]
+                    if not path_model.owner:
+                        path_model.owner = row[4]
+                    if not path_model.group:
+                        path_model.group = row[5]
+                    if not path_model.drive:
+                        path_model.drive = row[7]
                     path_model.size = row[8]
                     path_model.hash = row[9]
                     path_model.is_windows_path = row[10]
@@ -159,6 +166,115 @@ class PathDataManager:
     def find_paths_by_hash(self, hash: str) -> List[PathModel]:
         return self._find_paths(column='hash', operator='=', value=hash)
 
+    @staticmethod
+    def _convert_rows_to_path_model(path, root, path_type, id, extension, name, content_category, path_stage,
+                                    date_created, date_updated, size=0, content_family=None, mime_type=None, owner=None,
+                                    group=None,
+                                    drive=None, hash=None, is_windows_path=None, hidden=None, archive=None,
+                                    compressed=None, encrypted=None, offline=None, readonly=None, system=None,
+                                    temporary=None, content_min_age=None, content_rating=None, quality_rating=None,
+                                    files_in_dir=None, tags=None):
+        path_type = PathType(path_type)
+        if path_type == PathType.FILE:
+            path_model = FileModel(path=path, root=root)
+        elif path_type == PathType.DIRECTORY:
+            path_model = DirectoryModel(path=path, root=root)
+            path_model.files_in_dir = files_in_dir
+        else:
+            raise ValueError(f"The path type can not be defined: '{path_type}' is neither a file, "
+                             f"nor a dictionary. Path: {path}")
+        path_model.id = id
+        path_model.extension = extension
+        if not path_model.name:
+            path_model.name = name
+        if not path_model.owner:
+            path_model.owner = owner
+        if not path_model.group:
+            path_model.group = group
+        if not path_model.drive:
+            path_model.drive = drive
+        path_model.size = size
+        path_model.hash = hash
+        path_model.is_windows_path = is_windows_path
+        path_model.hidden = hidden
+        path_model.archive = archive
+        path_model.compressed = compressed
+        path_model.encrypted = encrypted
+        path_model.offline = offline
+        path_model.readonly = readonly
+        path_model.system = system
+        path_model.temporary = temporary
+        path_model.content_family = ContentFamily(content_family) if content_family else None
+        path_model.content_category = ContentCategory(content_category) if content_category else None
+        path_model.content_rating = Rating(content_rating) if content_rating else None
+        path_model.quality_rating = Rating(quality_rating) if quality_rating else None
+        path_model.content_min_age = ContentClassificationPegi(content_min_age) if content_min_age else None
+        path_model.mime_type = mime_type
+        path_model.path_stage = PathStage(path_stage) if path_stage else None
+        path_model.keywords = tags
+        path_model.date_created = date_created
+        path_model.date_updated = date_updated
+        return path_model
+
+    def find_paths_by_stage(self, path_type: PathType, path_stage: PathStage, max_items: int = 200) -> List[PathModel]:
+        sql_statement: str = f'SELECT id, "path", "extension", "name", "owner", "group", root, drive, "size", ' \
+                             f'hash, is_windows_path, hidden, archive, compressed, "encrypted", offline, readonly, ' \
+                             f'"system", "temporary", content_family, content_category, content_rating, ' \
+                             f'content_min_age, quality_rating, mime_type, path_type, files_in_dir, path_stage, tags, ' \
+                             f'date_created, date_updated ' \
+                             f'FROM path ' \
+                             f"WHERE path_type = {path_type.value} AND path_stage = {path_stage.value} LIMIT {max_items}"
+        path_list: List[PathModel] = []
+        try:
+            with self.cursor() as cur:
+                logger.debug(sql_statement)
+                cur.execute(sql_statement)
+                rows = cur.fetchall()
+                if not rows:
+                    return path_list
+                for row in rows:
+                    try:
+                        path_model: PathModel = PathDataManager._convert_rows_to_path_model(id=row[0],
+                                                                                            path=row[1],
+                                                                                            extension=row[2],
+                                                                                            name=row[3],
+                                                                                            owner=row[4],
+                                                                                            group=row[5],
+                                                                                            root=row[6],
+                                                                                            drive=row[7],
+                                                                                            size=row[8],
+                                                                                            hash=row[9],
+                                                                                            is_windows_path=row[10],
+                                                                                            hidden=row[11],
+                                                                                            archive=row[12],
+                                                                                            compressed=row[13],
+                                                                                            encrypted=row[14],
+                                                                                            offline=row[15],
+                                                                                            readonly=row[16],
+                                                                                            system=row[17],
+                                                                                            temporary=row[18],
+                                                                                            content_family=row[19],
+                                                                                            content_category=row[20],
+                                                                                            content_rating=row[21],
+                                                                                            content_min_age=row[22],
+                                                                                            quality_rating=row[23],
+                                                                                            mime_type=row[24],
+                                                                                            path_type=row[25],
+                                                                                            files_in_dir=row[26],
+                                                                                            path_stage=row[27],
+                                                                                            tags=row[28],
+                                                                                            date_created=row[29],
+                                                                                            date_updated=row[30])
+                        path_list.append(path_model)
+                        logging.debug(f"Fetched path '{path_model.path}'")
+                    except Exception as rowEx:
+                        logger.error(f"Unable to parse row into model. Row: {row}\nError: {rowEx}")
+            logging.info(f"Fetched {len(path_list)} paths")
+            return path_list
+        except Exception as ex:
+            logger.error(f"_find_paths - Unable to execute SQL command:\n{sql_statement}\nError: {ex}")
+            return path_list
+
     def find_paths_by_prefix_and_name(self, path_prefix: str, name: str, mime_type: str) -> List[PathModel]:
         path_prefix = path_prefix.replace("'", "\'")
         name = name.replace("'", "\'")
@@ -177,40 +293,33 @@ class PathDataManager:
                 if not rows:
                     return path_list
                 for row in rows:
-                    path = row[1]
-                    root = row[6]
-                    path_type = PathType(row[21])
-                    if path_type == PathType.FILE:
-                        path_model = FileModel(path=path, root=root)
-                    elif path_type == PathType.DIRECTORY:
-                        path_model = DirectoryModel(path=path, root=root)
-                    else:
-                        raise ValueError(f"The path type can not be defined: '{row[22]}' is neither a file, "
-                                         f"nor a dictionary. Row: {row}")
-                    path_model.id = row[0]
-                    path_model.extension = row[2]
-                    path_model.name = row[3]
-                    path_model.owner = row[4]
-                    path_model.group = row[5]
-                    path_model.drive = row[7]
-                    path_model.size = row[8]
-                    path_model.hash = row[9]
-                    path_model.is_windows_path = row[10]
-                    path_model.hidden = row[11]
-                    path_model.archive = row[12]
-                    path_model.compressed = row[13]
-                    path_model.encrypted = row[14]
-                    path_model.offline = row[15]
-                    path_model.readonly = row[16]
-                    path_model.system = row[17]
-                    path_model.temporary = row[18]
-                    path_model.content_family = ContentFamily(row[19]) if row[19] else None
-                    path_model.mime_type = row[20]
-                    path_model.path_stage = PathStage(row[22]) if row[22] else None
-                    path_model.date_created = row[23]
-                    path_model.date_updated = row[24]
-                    path_list.append(path_model)
-                    logging.debug(f"Fetched path '{path}'")
+                    try:
+                        path_model: PathModel = PathDataManager._convert_rows_to_path_model(path=row[1], root=row[6],
+                                                                                            path_type=row[21],
+                                                                                            id=row[0], extension=row[2],
+                                                                                            name=row[3],
+                                                                                            content_category=None,
+                                                                                            path_stage=row[22],
+                                                                                            date_created=row[23],
+                                                                                            date_updated=row[24],
+                                                                                            owner=row[4], group=row[5],
+                                                                                            drive=row[7],
+                                                                                            size=row[8], hash=row[9],
+                                                                                            is_windows_path=row[10],
+                                                                                            hidden=row[11],
+                                                                                            archive=row[12],
+                                                                                            compressed=row[13],
+                                                                                            encrypted=row[14],
+                                                                                            offline=row[15],
+                                                                                            readonly=row[16],
+                                                                                            system=row[17],
+                                                                                            temporary=row[18],
+                                                                                            content_family=row[19],
+                                                                                            mime_type=row[20])
+                        path_list.append(path_model)
+                        logging.debug(f"Fetched path '{path_model.path}'")
+                    except Exception as rowEx:
+                        logger.error(f"Unable to parse row into model. Row: {row}\nError: {rowEx}")
             logging.info(f"Fetched {len(path_list)} paths")
             return path_list
         except Exception as ex:
@@ -268,13 +377,13 @@ class PathDataManager:
             cursor.execute(sql_statement, params)
             end = time.time()
             duration = end - start
-            if duration > 0.5:
+            if duration > 0.2:
                 logger.warning(f"SLOW: took {duration}s for inserting path '{full_path}'")
         except Exception as ex:
             logger.error(f"Unable to execute SQL command:\n{sql_statement}\nError: {ex}\nPath: '{full_path}'")
 
 
-def save_path(self, path_model: PathModel) -> None:
+    def save_path(self, cursor, path_model: PathModel) -> None:
         sql_statement: str = f'INSERT INTO path (path, extension, name, owner, "group", root, drive, size, ' \
                              f'hash, is_windows_path, hidden, archive, compressed, encrypted, offline, ' \
                              f'readonly, system, temporary, content_family, mime_type, path_type, files_in_dir, tags, ' \
@@ -309,13 +418,12 @@ def save_path(self, path_model: PathModel) -> None:
                       path_model.path_stage.value,
                       path_model.content_category.value if path_model.content_category else None,
                       path_model.content_min_age.value if path_model.content_min_age else None)
-            with self.cursor() as cur:
-                start = time.time()
-                cur.execute(sql_statement, params)
-                end = time.time()
-                duration = end - start
-                if duration > 0.5:
-                    logger.warning(f"SLOW: took {duration}s for inserting path '{path_model.full_path}'")
+            start = time.time()
+            cursor.execute(sql_statement, params)
+            end = time.time()
+            duration = end - start
+            if duration > 0.2:
+                logger.warning(f"SLOW: took {duration}s for inserting path '{path_model.full_path}'")
             logging.debug(f"Saved path '{path_model.full_path}' into DB")
         except Exception as ex:
             logger.error(f"Unable to execute SQL command:\n{sql_statement}\nError: {ex}\nPath: '{path_model.relative_path if path_model else 'None'}'")

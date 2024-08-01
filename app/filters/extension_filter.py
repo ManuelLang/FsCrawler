@@ -43,7 +43,10 @@ class ExtensionFilter(Filter):
     #     return True
 
     def authorize(self, entry: DirEntry, stat: stat_result = None):
-        file_extension = str(entry.name.split('.')[-1]).lower()
+        file_extension = str(entry.name.split('.')[-1]).lower() \
+            if entry.is_file(follow_symlinks=False) and '.' in entry.name else None
+        if file_extension and len(file_extension) > 12:
+            file_extension = None  # There is likely a dot in the middle of the filename, but no extension
         if self.excluded_extensions:
             if file_extension in self.excluded_extensions:
                 logger.info(f"Skipping path {entry.path}: excluded by extensions {self.excluded_extensions}")

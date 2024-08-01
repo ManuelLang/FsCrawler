@@ -30,6 +30,7 @@ class HashFileProcessor(IPathProcessor):
             logger.debug(f"Done hashing file {path_model.full_path}")
         except Exception as ex:
             logger.error(f"Unable to hash file '{path_model.full_path}': {ex}")
+            raise ex
 
     def _hash_digest(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
         with open(path_model.full_path, 'rb') as f:

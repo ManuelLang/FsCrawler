@@ -12,7 +12,7 @@ class FileModel(PathModel):
     def __init__(self, root: str, path, size: int = 0) -> None:
         super().__init__(root, path, size)
         if isinstance(path, Path) and not path.is_file():
-            raise ValueError(f"The given path is not a file: '{path}'")
+            raise ValueError(f"The given path is not a valid file: '{path}'")
 
     @property
     def path_type(self) -> PathType:

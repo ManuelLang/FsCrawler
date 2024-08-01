@@ -21,13 +21,19 @@ class RatingFileProcessor(IPathProcessor):
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
         logger.debug(f"Fetching content rating based on naming convention: {path_model.full_path}")
-        matches = re.findall(r'([\+]+)', path_model.full_path)
-        if matches:
-            counter = matches[0].count('+')
-            rating = min(int(counter), Rating.EXCELLENT.value)
-            if rating > 0:
-                path_model.content_rating = Rating(rating)
-                logger.info(f"Found rating: {path_model.content_rating} ({path_model.name})")
+        rating: int = self.get_rating_from_str(path_model.name)     # Check the filename first
+        if not rating:
+            rating: int = self.get_rating_from_str(path_model.full_path)     # Else check parent dirs
+        if not rating:
+            return
+        path_model.content_rating = Rating(rating)
+        logger.debug(f"Found rating: {path_model.content_rating} ({path_model.name})")
         logger.debug(f"Done fetching file's rating: {path_model.content_rating}\n{path_model.full_path}")
 
-
+    def get_rating_from_str(self, name: str) -> int | None:
+        matches = re.findall(r'([\+]+)', name)
+        if matches:
+            counter = matches[0].count('+')
+            if counter > 0:
+                return min(int(counter), Rating.EXCELLENT.value)    # Cap the upper value
+        return None

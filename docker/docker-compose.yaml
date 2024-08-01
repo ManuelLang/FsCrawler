@@ -15,8 +15,3 @@ services:
       - ./init_scripts/1.init.sql:/docker-entrypoint-initdb.d/1.init.sql
       - /media/sa-nas/docker_vol_db/postgres/fs_crawler:/var/lib/postgresql
 
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 8080:8080

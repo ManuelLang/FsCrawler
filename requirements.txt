@@ -20,4 +20,5 @@ libmagic
 xxhash
 psycopg2
 urllib3
-
+elasticsearch
+elasticsearch-dsl

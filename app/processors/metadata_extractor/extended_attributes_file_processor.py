@@ -2,6 +2,7 @@
 #  Software under GNU AGPLv3 licence
 
 import stat
+from pathlib import Path
 from stat import UF_HIDDEN, SF_ARCHIVED, UF_COMPRESSED
 
 import magic
@@ -25,12 +26,17 @@ class ExtendedAttributesFileProcessor(IPathProcessor):
         return PathType.FILE
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
-        logger.debug(f"Fetching file's extended attributes: {path_model}")
-        path_model.reserved = crawl_event.path.is_reserved()
-        path_model.mime_type = self.mime.from_file(crawl_event.path)
-        path_model.content_family = PathModel.get_content_family_from_mime_type(mime_type=path_model.mime_type)
+        path = crawl_event.path if crawl_event and crawl_event.path else Path(path_model.full_path)
 
-        lstat = crawl_event.path.lstat()
+        logger.debug(f"Fetching file's extended attributes: {path_model}")
+        path_model.reserved = path.is_reserved()
+        if self.mime:
+            if crawl_event and crawl_event.path:
+                path_model.mime_type = self.mime.from_file(crawl_event.path)
+            elif path_model and path_model.path:
+                path_model.content_family = PathModel.get_content_family_from_mime_type(mime_type=path_model.mime_type)
+
+        lstat = path.lstat()
 
         path_model.create_time = datetime.fromtimestamp(lstat.st_ctime)
         path_model.modify_time = datetime.fromtimestamp(lstat.st_mtime)

@@ -48,7 +48,7 @@ class KeywordsFileProcessor(IPathProcessor):
                     break
                 path_model.keywords = self.split_words(part)
         if path_model.keywords:
-            logger.info(f"Found keywords: {path_model.keywords} ({path_model.name})")
+            logger.debug(f"Found keywords: {path_model.keywords} ({path_model.name})")
         logger.debug(f"Done fetching file's keywords: {path_model.keywords}\n{path_model.full_path}")
 
     def find_keywords_part(self, path_model: PathModel, part_start: str = '[', part_end: str = ']'):

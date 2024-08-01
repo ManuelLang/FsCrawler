@@ -93,20 +93,26 @@ class FastCrawler:
         self.errored_paths = {}
 
     def should_skip_path(self, entry: os.DirEntry, stat: os.stat_result = None) -> (str, bool):
-        file_extension = str(entry.name.split('.')[-1]).lower() if entry.is_file(follow_symlinks=False) else None
-        should_skip = False
+        is_file = entry.is_file(follow_symlinks=False)
+        file_extension = str(entry.name.split('.')[-1]).lower() if is_file and '.' in entry.name else None
+        if file_extension and len(file_extension) > 12:
+            file_extension = None   # There is likely a dot in the middle of the filename, but no extension
+        _filter = None
         if self.filters:
             for f in self.filters:
                 if not f.authorize(entry=entry, stat=stat):
-                    should_skip = True
+                    _filter = f
                     logger.debug(f"should_skip set to True by {f} for path {entry}")
                     break
+        should_skip = _filter is not None
         if self.invert_filters:
             should_skip = not should_skip
+        if should_skip:
+            self.path_ignored(entry=path, filter=_filter, is_file=is_file, file_extension=file_extension)
         return file_extension, should_skip
 
     def scan(self):
-        _start = time.time()
+        self.scan_starting()
         if self.data_manager:
             with self.data_manager.create_cursor() as cur:
                 self.total_size, self.total_files = self._get_tree_size(path=self.path_to_scan, cursor=cur)
@@ -118,14 +124,74 @@ class FastCrawler:
                 cur.connection.commit()
         else:
             self.total_size, self.total_files = self._get_tree_size(path=self.path_to_scan, cursor=None)
-        _end = time.time()
-        _duration = _end - _start
+        self.scan_completed()
+
+
+    def scan_starting(self):
+        self.start_time = time.time()
+
+
+    def scan_completed(self):
+        self.end_time = time.time()
+        self.duration = self.end_time - self.start_time
         logger.success(f"Total size: {round(self.total_size / 1024 / 1024 / 1024, 3)} Go - "
-                       f"Scanned {self.total_files} files / Skipped {fc.ignored_files} files in {_duration:.2f} sec")
+                       f"Scanned {self.total_files} files / Skipped {self.ignored_files} files in {self.duration:.2f} sec")
         if self.errored_paths:
             logger.error(f"Error happened for scanning {len(self.errored_paths)} paths:")
-            for path, error in self.errored_paths.items():
-                logger.error(f"{path}: {error}")
+            for errored_path, error in self.errored_paths.items():
+                logger.error(f"{errored_path}: {error}")
+
+    def scan_error(self, ex: Exception):
+        pass
+
+    def path_error(self, _path: Path, error: Exception, msg: str = None):
+        error_message = f"{msg}. Error: {error}" if msg else str(error)
+        logger.warning(error_message)
+        self.errored_paths[_path] = error_message
+
+    def path_found(self, entry: os.DirEntry):
+        pass
+
+    def empty_directory_found(self, entry: os.DirEntry):
+        self.empty_dirs += 1
+        if self.empty_dirs < self.max_lists_size:
+            self.empty_dirs_list.add(entry.path)
+
+    def directory_found(self, directory: os.DirEntry):
+        self.found_dirs += 1
+
+    def file_found(self, file: os.DirEntry):
+        self.found_files += 1
+
+    def path_ignored(self, entry: os.DirEntry, filter: IFilter, is_file: bool, file_extension: str):
+        filter_name = filter.__class__.__name__ if filter else 'Unknown'
+        if is_file:
+            logger.debug(f"Ignoring file '{entry.path}' (Skipped by filter '{filter_name}')")
+            self.ignored_files += 1
+            if self.ignored_files < self.max_lists_size:
+                self.ignored_files_list.add(entry.path)
+            if file_extension:
+                self.ignored_extensions_list.add(file_extension)
+        else:
+            logger.debug(f"Ignoring directory '{entry.path}' (Skipped by filter '{filter_name}')")
+            self.ignored_dirs += 1
+            if self.ignored_dirs < self.max_lists_size:
+                self.ignored_dirs_list.add(entry.path)
+
+    def directory_scanned(self, directory: os.DirEntry, is_empty: bool, dir_total_size: int,
+                        dir_total_files_nb: int):
+        self.scanned_dirs += 1
+        logger.debug(f"Scanned dir '{directory.path}'")
+        if self.scanned_dirs % 10000 == 0:
+            logger.success(f"Scanned {self.scanned_files} files / {self.scanned_dirs} dirs")
+
+    def file_scanned(self, file: os.DirEntry, entry_stat, file_extension: str):
+        self.scanned_files += 1
+        logger.debug(f"Scanned file '{file.path}'")
+        if self.scanned_files % 5000 == 0:
+            logger.info(f"Scanned {self.scanned_files} files / {self.scanned_dirs} dirs")
+        elif self.scanned_files % 10000 == 0:
+            logger.success(f"Scanned {self.scanned_files} files / {self.scanned_dirs} dirs")
 
     def _get_tree_size(self, path, cursor) -> (int, int):
         """Return total size of files in path and subdirs.
@@ -136,50 +202,36 @@ class FastCrawler:
         # scandir is the fastest way to iterate over filesystem: https://peps.python.org/pep-0471/
         for entry in os.scandir(path):
             try:
+                self.path_found(entry=entry)
                 try:
                     is_dir = entry.is_dir(follow_symlinks=False)
                 except OSError as error:
-                    msg = f"Error calling is_dir() for path '{path}'. Error: {error}"
-                    self.errored_paths[path] = msg
+                    self.path_error(_path=path, msg=f"Error calling is_dir() for path '{path}'", error=error)
                     continue
                 if is_dir:
-                    self.found_dirs += 1
+                    self.directory_found(directory=entry)
                     file_extension, ignore = self.should_skip_path(entry)
-                    # ignore = False
                     if ignore:
-                        logger.debug(f"Ignoring directory '{entry.path}'")
-                        self.ignored_dirs += 1
-                        if self.ignored_dirs < self.max_lists_size:
-                            self.ignored_dirs_list.add(entry.path)
                         continue
                     sub_dir_total_size, sub_dir_total_files_nb = self._get_tree_size(entry.path, cursor)
-                    if sub_dir_total_size < 1 and sub_dir_total_files_nb < 1:
-                        self.empty_dirs += 1
-                        if self.empty_dirs < self.max_lists_size:
-                            self.empty_dirs_list.add(entry.path)
+                    is_empty_dir = sub_dir_total_size < 1 and sub_dir_total_files_nb < 1
                     dir_total_size += sub_dir_total_size
                     dir_total_files_nb += sub_dir_total_files_nb
-                    self.scanned_dirs += 1
                     if cursor:
                         self.data_manager._save_path(cursor=cursor, full_path=entry.path, extension=None,
                                                      name=entry.name, is_dir=True, files_in_dir=dir_total_files_nb,
                                                      size=dir_total_size, stage=PathStage.CRAWLED,
                                                      category=self.category, min_age=self.min_age)
-                    logger.debug(f"Scanned dir '{entry.path}'")
+                    self.directory_scanned(directory=entry, is_empty=is_empty_dir, dir_total_size=dir_total_size,
+                                           dir_total_files_nb=dir_total_files_nb)
                     if self.scanned_dirs % 10000 == 0:
-                        logger.success(f"Scanned {self.scanned_files} files / {self.scanned_dirs} dirs")
                         if cursor:
                             cursor.connection.commit()
                 else:
                     try:
-                        self.found_files += 1
+                        self.file_found(file=entry)
                         file_extension, ignore = self.should_skip_path(entry)
                         if ignore:
-                            logger.debug(f"Ignoring file '{entry.path}'")
-                            self.ignored_files += 1
-                            if self.ignored_files < self.max_lists_size:
-                                self.ignored_files_list.add(entry.path)
-                            self.ignored_extensions_list.add(file_extension)
                             continue
                         if file_extension:
                             self.scanned_extensions_list.add((file_extension, entry.path))
@@ -190,31 +242,30 @@ class FastCrawler:
                             size = entry_stat.st_size
                             dir_total_size += size
                         dir_total_files_nb += 1
-                        self.scanned_files += 1
                         if cursor:
                             self.data_manager._save_path(cursor=cursor, full_path=entry.path, extension=file_extension,
                                                          name=entry.name, is_dir=False, files_in_dir=None,
                                                          size=size, stage=PathStage.CRAWLED,
                                                          category=self.category, min_age=self.min_age)
+                        self.file_scanned(file=entry, entry_stat=entry_stat, file_extension=file_extension)
                         if self.scanned_files % 5000 == 0:
-                            logger.info(f"Scanned {self.scanned_files} files / {self.scanned_dirs} dirs")
                             if cursor:
                                 cursor.connection.commit()
-                        elif self.scanned_files % 10000 == 0:
-                            logger.success(f"Scanned {self.scanned_files} files / {self.scanned_dirs} dirs")
                     except OSError as error:
-                        msg = f"Error calling stat() for path '{path}'. Error: {error}"
-                        self.errored_paths[path] = msg
+                        self.path_error(_path=path, msg=f"Error calling stat() for path '{path}'", error=error)
                         continue
             except Exception as ex:
-                self.errored_paths[entry.path] = str(ex)
+                self.path_error(_path=entry.path, error=ex)
         return dir_total_size, dir_total_files_nb
 
 
 if __name__ == '__main__':
     base_volume = '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b1/'
-    dev_dir = "/Développement/"
-    test_dir = "Développement/Dev/v3.5/src/trunk/Evaluant.Uss.DomainModel/ClassModel"
+    paths_to_scan = {
+        "Applications/": (ContentCategory.APP, ContentClassificationPegi.TWELVE_OR_MORE),
+        "A trier/": (None, ContentClassificationPegi.EIGHTEEN_OR_MORE),
+
+    }
 
     filters: List[IFilter] = []
     filters.append(NameFilter(excluded_names={".idea", ".Trashes", "out", ".idea_modules", "build", "dist", "lib", "venv",
@@ -249,47 +300,53 @@ if __name__ == '__main__':
 
     data_manager: PathDataManager = PathDataManager()
 
-    fc: FastCrawler = FastCrawler(base_path=base_volume, child_path=dev_dir, fetch_file_stat=False,
-                                  category=ContentCategory.CODE, min_age=ContentClassificationPegi.TWELVE_OR_MORE,
-                                  filters=filters, data_manager=data_manager)
+    process_start = time.time()
+    process_size = 0
+    process_nb_files = 0
+    for path, (category, min_age) in paths_to_scan.items():
+        try:
+            fc: FastCrawler = FastCrawler(base_path=base_volume, child_path=path, fetch_file_stat=True,
+                                          category=category, min_age=min_age,
+                                          filters=filters, data_manager=data_manager)
+            start = time.time()
+            fc.scan()
+            end = time.time()
+            duration = end - start
 
-    start = time.time()
-    fc.scan()
-    end = time.time()
-    duration = end - start
-    print(f"Total size: {round(fc.total_size / 1024 / 1024 / 1024, 3)} Go - Scanned {fc.total_files} files / Skipped {fc.ignored_files} files in {duration:.2f} sec")
+            size = round(fc.total_size / 1024 / 1024 / 1024, 3)
+            process_size += size
+            process_nb_files += fc.total_files
+            logger.success(f"Total size: {size} Go - Scanned {fc.total_files} files / Skipped {fc.ignored_files} files in {duration:.2f} sec")
 
-    print("\n==============")
-    print("Ignored dirs:")
-    for name in sorted(fc.ignored_dirs_list)[:100]:
-        print(name)
+            logger.info("\n==============")
+            logger.info("Ignored dirs:")
+            for name in sorted(fc.ignored_dirs_list)[:100]:
+                logger.info(name)
 
-    print("\n==============")
-    print("Ignored files:")
-    for name in sorted(fc.ignored_files_list)[:100]:
-        print(name)
+            logger.info("\n==============")
+            logger.info("Ignored files:")
+            for name in sorted(fc.ignored_files_list)[:100]:
+                logger.info(name)
 
-    print("\n==============")
-    print("Ignored extensions:")
-    for name in sorted(fc.ignored_extensions_list)[:100]:
-        print(name)
+            logger.info("\n==============")
+            logger.info("Ignored extensions:")
+            for name in sorted(fc.ignored_extensions_list)[:100]:
+                logger.info(name)
 
-    print("\n==============")
-    print("Scanned extensions:")
-    for name in sorted(fc.scanned_extensions_list)[:100]:
-        print(name)
+            logger.info("\n==============")
+            logger.info("Scanned extensions:")
+            for name in sorted(fc.scanned_extensions_list)[:100]:
+                logger.info(name)
 
-    print("\n==============")
-    print("Empty directories:")
-    for name in sorted(fc.empty_dirs_list)[:100]:
-        print(name)
+            logger.info("\n==============")
+            logger.info("Empty directories:")
+            for name in sorted(fc.empty_dirs_list)[:100]:
+                logger.info(name)
+        except Exception as ex:
+            logger.exception(f"Unable to scan path '{path}': {ex}", ex, exc_info=True, stack_info=True)
 
-    # crawl_directory(base_dir_path=f"{base_volume}Test",
-    #                 category=ContentCategory.ADULT,
-    #                 min_age=ContentClassificationPegi.EIGHTEEN_OR_MORE)
-    # crawl_directory(base_dir_path=f"{base_volume}Développement",
-    #                 category=ContentCategory.CODE,
-    #                 min_age=ContentClassificationPegi.TWELVE_OR_MORE)
-    # crawl_directory(base_dir_path=f"{base_volume}A trier",
-    #                 category=None,
-    #                 min_age=ContentClassificationPegi.EIGHTEEN_OR_MORE)
+    process_end = time.time()
+    duration = process_end - process_start
+    logger.success(f"Total size: {process_size} Go - Scanned {process_nb_files} files in {duration:.2f} sec")
+
+

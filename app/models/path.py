@@ -36,12 +36,15 @@ class PathModel(ABC):
 
         self.id: int = 0
         self.path_root: str = root
-        start_index = self._full_path.find(root)
-        self.relative_path: str = self._full_path[start_index + len(root) - 1:] \
-            if start_index >= 0 and len(root) > 0 \
-            else self._full_path
-        if self.relative_path and len(self.relative_path) > 0 and self.relative_path[0] == '/':
-            self.relative_path = self.relative_path[1:]
+        if self.path_root:
+            start_index = self._full_path.find(root)
+            self.relative_path: str = self._full_path[start_index + len(root) - 1:] \
+                if start_index >= 0 and len(root) > 0 \
+                else self._full_path
+            if self.relative_path and len(self.relative_path) > 0 and self.relative_path[0] == '/':
+                self.relative_path = self.relative_path[1:]
+        else:
+            self.relative_path: str = self._full_path
 
         self.extension: str = None
         self.size: int = size
@@ -64,7 +67,7 @@ class PathModel(ABC):
                 self.owner: str = path.owner()
                 self.group: str = path.group()
             except Exception as ex:
-                logger.debug(f"Unable to get file ownership for {path}. Error: {ex}")
+                # logger.debug(f"Unable to get file ownership for {path}. Error: {ex}")
                 self.owner: str = None
                 self.group: str = None
             self.root: str = path.root
