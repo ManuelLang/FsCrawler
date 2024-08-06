@@ -61,15 +61,15 @@ INSERT INTO `rating` (id, name) VALUES (5, 'EXCELLENT');
 CREATE TABLE IF NOT EXISTS `content_classification_pegi_age`
 (
     `id`              int(11)       NOT NULL,
-    `name`       varchar(25)   NOT NULL,
+    `name`            varchar(25)   NOT NULL,
     PRIMARY KEY (`id`),
     KEY `ix_content_classification_pegi_age_id` (`id`)
 );
-INSERT INTO `content_classification_pegi_age` (id, name) VALUES (1, 3);
-INSERT INTO `content_classification_pegi_age` (id, name) VALUES (2, 7);
-INSERT INTO `content_classification_pegi_age` (id, name) VALUES (3, 12);
-INSERT INTO `content_classification_pegi_age` (id, name) VALUES (4, 16);
-INSERT INTO `content_classification_pegi_age` (id, name) VALUES (5, 18);
+INSERT INTO `content_classification_pegi_age` (id, name) VALUES (3, 'Three');
+INSERT INTO `content_classification_pegi_age` (id, name) VALUES (7, 'Seven');
+INSERT INTO `content_classification_pegi_age` (id, name) VALUES (12, 'Twelve');
+INSERT INTO `content_classification_pegi_age` (id, name) VALUES (16, 'Sixteen');
+INSERT INTO `content_classification_pegi_age` (id, name) VALUES (18, 'Eighteen');
 
 CREATE TABLE IF NOT EXISTS `tags`
 (

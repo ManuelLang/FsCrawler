@@ -38,14 +38,28 @@ class ContentCategory(Enum):
 
 class ContentClassificationPegi(Enum):
     ALL = '*'
-    THREE_OR_MORE= 1
-    SEVEN_OR_MORE = 2
-    TWELVE_OR_MORE = 3
-    SIXTEEN_OR_MORE = 4
-    EIGHTEEN_OR_MORE = 5
+    THREE_OR_MORE= 3
+    SEVEN_OR_MORE = 7
+    TWELVE_OR_MORE = 12
+    SIXTEEN_OR_MORE = 16
+    EIGHTEEN_OR_MORE = 18
+
+    @staticmethod
+    def classification_from_age(age: int):
+        if age < 7:
+            return ContentClassificationPegi.THREE_OR_MORE
+        elif age < 12:
+            return ContentClassificationPegi.SEVEN_OR_MORE
+        elif age < 16:
+            return ContentClassificationPegi.TWELVE_OR_MORE
+        elif age < 18:
+            return ContentClassificationPegi.SIXTEEN_OR_MORE
+        else:
+            return ContentClassificationPegi.EIGHTEEN_OR_MORE
 
     def __str__(self):
         return self.name
+
 
 class Content:
     def __init__(self) -> None:

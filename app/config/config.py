@@ -129,3 +129,5 @@ logging.getLogger('botocore').setLevel(logging.INFO if DEBUG else logging.WARNIN
 QUEUE_MAX_SIZE: int = config("QUEUE_MAX_SIZE", default=200000)
 QUEUE_MIN_SIZE: int = config("QUEUE_MIN_SIZE", default=100)
 QUEUE_WAIT_TIME: int = config("QUEUE_WAIT_TIME", cast=int, default=10)  # seconds to wait for queue to get new items when empty
+
+CURRENT_MAX_AGE: int = config("CURRENT_MAX_AGE", default=16)
