@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<movie>
+    <!-- https://github.com/haxwithaxe/python-nfo/blob/master/nfo/parser.py -->
+    <!-- {VideoFileName}.nfo: NFO Files are named the same as the video file except with the .nfo extension. More info: https://kodi.wiki/view/NFO_files/Movies -->
+    <!-- Note: A Combination NFO file cannot be used for Seasons or Episodes. Seasons and Episodes are matched via the correct TV Show. => https://kodi.wiki/view/NFO_files/Combination -->
+    <!-- Provider id tags are supported as well if they follow the scheme: <PROVIDER_NAME+ id>. -->
+    <title>The title of the movie, e.g. Zack Snyder&apos;s Justice League</title>
+    <country>Country of origin</country>
+    <language>en-us</language>
+    <originaltitle>Displays the original title of the movie. For example, if the scraper is set to german language and
+        the scraped movie in german is "Der mit dem Wolf tanzt" the original title will be "Dances with Wolves"
+    </originaltitle>
+    <sorttitle>Allows alternate title sort without modifying movie title, e.g. Justice League 2</sorttitle>
+    <tagline>Catch me if you can</tagline>
+    <plot>Short description</plot>
+    <runtime>90</runtime>
+    <year>2015</year> <!-- Release year of movie. Format as yyyy-mm-dd -->
+    <premiered>2015-09-30</premiered> <!-- Release date of movie. Format as yyyy-mm-dd -->
+    <releasedate>2015-09-30</releasedate> <!-- Release date of movie. Format as yyyy-mm-dd -->
+    <dateadded>2012-03-25 21:07:06</dateadded> <!-- mTime of the playable video file -->
+    <mpaa>https://en.wikipedia.org/wiki/Motion_Picture_Association_film_rating_system</mpaa>
+    <credits>Field for writers</credits>
+    <director>Matt Zane</director>
+    <actor>
+        <name>Ben Affleck</name>
+        <role>Bruce Wayne / Batman</role>
+        <thumb>/config/metadata/People/K/Katherine Heigl/folder.jpg</thumb>
+        <order>1</order>    <!-- May be replaced with tag <sortorder>0</sortorder> -->
+        <type>Actor</type>
+    </actor>
+    <actor>
+        <name>Henry Cavill</name>
+        <role>Clark Kent / Superman / Kal-El</role>
+        <thumb>https://image.tmdb.org/t/p/original/hErUwonrQgY5Y7RfxOfv8Fq11MB.jpg</thumb>
+        <tmdbid>73968</tmdbid>
+        <order>2</order>
+    </actor>
+    <trailer>Local or online path to movie trailer</trailer>
+    <ratings> <!-- May be replaced by tag <rating>6.399</rating> -->
+        <rating name="themoviedb" max="10" default="true">
+            <value>8</value>
+            <votes>253</votes>
+        </rating>
+        <rating name="imdb" max="10" default="false">
+            <value>8</value>
+            <votes>253</votes>
+        </rating>
+    </ratings>
+    <userrating max="10">6</userrating> <!-- May be customrating tag -->
+    <art>   <!-- May be replaced by tag <fanart> -->
+        <poster>/movies/27 Robes-poster.jpg</poster>
+        <fanart>/movies/27 Robes-backdrop.jpg</fanart>
+    </art>
+    <uniqueid type="tmdb"
+              default="true"/>  <!-- add a value to type="" eg imdb, tmdb, home, sport, docu, see sample below. May be replaced by tag <id>, or <tmdbid> -->
+    <uniqueid type="imdb"
+              default="false"/> <!-- add a value to type="" eg imdb, tmdb, home, sport, docu, see sample below. May be replaced by tag <id>, or <imdbid> -->
+    <watched>True</watched>
+    <playcount>2</playcount>
+    <lastplayed>2012-03-25 21:07:06</lastplayed>
+    <genre>Adventure</genre>
+    <genre>Fantasy</genre>
+    <genre>Adult</genre>
+    <studio>Fox 2000 Pictures</studio>
+    <tag>sibling relationship</tag>
+    <tag>lovesickness</tag>
+    <tag>newspaper</tag>
+    <tag>new love</tag>
+    <tag>wedding planner</tag>
+    <tag>witness</tag>
+    <tag>bride</tag>
+    <tag>bridesmaid</tag>
+    <tag>sister</tag>
+    <tag>romantic comedy</tag>
+    <tag>sibling rivalry</tag>
+    <tag>reporter</tag>
+    <tag>wedding</tag>
+    <tag>woman director</tag>
+    <boxset>false</boxset> <!-- true / false -->
+    <set>
+        <name>The name of the Set. A Movie Set is a collection of related films that are part of the same fictional
+            universe. Must be identical for each movie in the set otherwise multiple, similarly named Movie Sets will be
+            created.
+        </name>
+        <overview>Movie Set description. This is set by the first movie scanned into the collection. Changes to the
+            overview in subsequent movies added will not overwrite the original overview. The entire set will need to be
+            removed and then readded to change the overview.
+        </overview>
+    </set>
+
+    <fileinfo>
+        <streamdetails>
+            <video>
+                <codec>xvid</codec>
+                <micodec>xvid</micodec>
+                <bitrate>935096</bitrate>
+                <width>512</width>
+                <height>384</height>
+                <aspect>4:3</aspect>
+                <aspectratio>4:3</aspectratio>
+                <framerate>25</framerate>
+                <scantype>progressive</scantype>
+                <default>False</default>
+                <forced>False</forced>
+                <duration>90</duration>
+                <durationinseconds>5409</durationinseconds>
+            </video>
+            <audio>
+                <codec>mp3</codec>
+                <micodec>mp3</micodec>
+                <bitrate>127944</bitrate>
+                <scantype>progressive</scantype>
+                <channels>2</channels>
+                <samplingrate>48000</samplingrate>
+                <default>False</default>
+                <forced>False</forced>
+            </audio>
+        </streamdetails>
+    </fileinfo>
+</movie>
