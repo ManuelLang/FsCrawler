@@ -62,12 +62,12 @@ class RegexPatternFilter(Filter):
         str_path = f"{entry.path}/" if entry.is_dir() else str(entry.path)
         if self.excluded_path_pattern:
             if self.excluded_path_pattern.findall(str_path) or self.excluded_path_pattern.pattern.replace('\\', '') in str_path:
-                logger.info(f"Skipping path {entry.path}: excluded by pattern {self.excluded_path_pattern}")
+                logger.debug(f"Skipping path {entry.path}: excluded by pattern {self.excluded_path_pattern}")
                 return False
 
         if self.authorized_path_pattern:
             if not self.authorized_path_pattern.findall(str_path) and not self.authorized_path_pattern.pattern.replace('\\', '') in str_path:
-                logger.info(f"Skipping path {entry.path}: not allowed by pattern {self.authorized_path_pattern}")
+                logger.debug(f"Skipping path {entry.path}: not allowed by pattern {self.authorized_path_pattern}")
                 return False
 
         return True

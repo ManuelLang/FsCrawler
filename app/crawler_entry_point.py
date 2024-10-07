@@ -54,8 +54,15 @@ if platform.system() == "Darwin":
 
 def main():
     roots: dict = {
-
         # Path, Root part from the mapped volume
+
+        # '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/Applications/': {
+        #     'root': '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b/',
+        #     'category': ContentCategory.APP,
+        #     'min_age': ContentClassificationPegi.TWELVE_OR_MORE,
+        #     'target_table': 'path_apps'
+        # },
+
     }
     crawler = FileSystemCrawler(roots=roots)
     crawler.add_skip_filter(RegexPatternFilter(excluded_path_pattern=".*\.ino$"))
@@ -272,7 +279,7 @@ def get_tree_size(path) -> (str, str):
 
 
 if __name__ == '__main__':
-    base_volume = '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b1/'
+    base_volume = '/mnt/sda1/'
     dev_dir = f"{base_volume}Développement"
     test_dir = f"{base_volume}Développement/Dev/v3.5/src/trunk/Evaluant.Uss.DomainModel/ClassModel/"
     start = time.time()

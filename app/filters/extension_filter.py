@@ -49,12 +49,12 @@ class ExtensionFilter(Filter):
             file_extension = None  # There is likely a dot in the middle of the filename, but no extension
         if self.excluded_extensions:
             if file_extension in self.excluded_extensions:
-                logger.info(f"Skipping path {entry.path}: excluded by extensions {self.excluded_extensions}")
+                logger.debug(f"Skipping path {entry.path}: excluded by extensions {self.excluded_extensions}")
                 return False
 
         if self.authorized_extensions:
             if file_extension not in self.authorized_extensions:
-                logger.info(f"Skipping path {entry.path}: not allowed by extensions {self.authorized_extensions}")
+                logger.debug(f"Skipping path {entry.path}: not allowed by extensions {self.authorized_extensions}")
                 return False
         return True
 

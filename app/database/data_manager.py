@@ -328,12 +328,19 @@ class PathDataManager:
             return path_list
 
     def find_duplicates(self) -> Dict[str, List]:
-        sql_statement: str = ('Select p.size, p.hash, p.path '
-                              'FROM path p '
-                              'Inner Join path p1 on p.size = p1.size '
-                              ' AND p.hash = p1.hash AND p.path <> p1.path '
-                              'Where p.hash <> '' AND p.hash IS NOT NULL '
-                              'Order By p.size DESC, p.hash, p.path')
+        sql_statement: str = """
+        select duplicates.*, p1."name", p1."path", p1.date_updated  
+        from 
+            (Select p.hash, count(*) as cnt
+            FROM path p
+            Inner Join path other on p.size = other.size AND p.hash = other.hash
+            Where p.hash <> '' AND p.hash IS NOT null AND p."size" > 0 AND p.path <> other.path
+            Group by p.hash
+            Having count(*) > 1
+            Order By p.hash) as duplicates 
+        inner join path p1 on p1.hash = duplicates.hash
+        order by duplicates.cnt DESC, duplicates.hash, p1."name", p1."path", p1.date_updated
+        """
         result: Dict[str, List] = {}
         try:
             with self.cursor() as cur:

@@ -2,6 +2,7 @@
 #  Software under GNU AGPLv3 licence
 import sys
 from pathlib import Path
+from typing import List
 
 if __name__ == '__main__':
     file = Path(__file__).resolve()
@@ -25,7 +26,8 @@ from models.path_type import PathType
 
 
 class KeywordsFileProcessor(IPathProcessor):
-    def __init__(self) -> None:
+    def __init__(self, use_parent_dirs_as_keywords: bool = False) -> None:
+        self.use_parent_dirs_as_keywords = use_parent_dirs_as_keywords
         super().__init__()
 
     @property
@@ -34,20 +36,24 @@ class KeywordsFileProcessor(IPathProcessor):
 
     def process_path(self, crawl_event: FileCrawledEventArgs, path_model: PathModel):
         logger.debug(f"Fetching keywords based on naming convention: {path_model.full_path}")
+        keywords: List[str] = []
         if '- ' in path_model.name:
             parts = reversed(path_model.name.split('-'))
             for part in parts:
-                if path_model.keywords:
+                if keywords:
                     break
-                path_model.keywords = self.split_words(part)
-        if not path_model.keywords:
+                keywords = self.split_words(part)
+        if not keywords:
             parts = reversed(path_model.name.split('['))
             for part in parts:
                 part = part.replace(']', '')
-                if path_model.keywords:
+                if keywords:
                     break
-                path_model.keywords = self.split_words(part)
-        if path_model.keywords:
+                keywords = self.split_words(part)
+        if self.use_parent_dirs_as_keywords:
+            keywords += path_model.full_path.split('/')[:-1]
+        if keywords:
+            path_model.keywords = ','.join(keywords)
             logger.debug(f"Found keywords: {path_model.keywords} ({path_model.name})")
         logger.debug(f"Done fetching file's keywords: {path_model.keywords}\n{path_model.full_path}")
 
@@ -65,13 +71,13 @@ class KeywordsFileProcessor(IPathProcessor):
             return keywords
         return None
 
-    def split_words(self, part: str) -> str | None:
+    def split_words(self, part: str) -> List[str] | None:
         part = part.replace('.', ', ').replace('_', ', ')
         if ', ' in part:
             if re.findall('[^a-zA-Z0-9,\s\]]+', part):
                 return None
             keywords = [str(k).strip() for k in part.split(', ')]
-            return ','.join(keywords)
+            return keywords
         return None
 
 

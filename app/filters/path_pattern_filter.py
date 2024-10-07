@@ -53,12 +53,12 @@ class PatternFilter(Filter):
 
         if self.excluded_path_pattern:
             if self.excluded_path_pattern in entry.path:
-                logger.info(f"Skipping path {entry.path}: excluded by pattern {self.excluded_path_pattern}")
+                logger.debug(f"Skipping path {entry.path}: excluded by pattern {self.excluded_path_pattern}")
                 return False
 
         if self.authorized_path_pattern:
             if self.authorized_path_pattern not in entry.path:
-                logger.info(f"Skipping path {entry.path}: not allowed by pattern {self.authorized_path_pattern}")
+                logger.debug(f"Skipping path {entry.path}: not allowed by pattern {self.authorized_path_pattern}")
                 return False
         return True
 

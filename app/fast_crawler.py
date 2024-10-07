@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from typing import List
 from loguru import logger
+import traceback
 
 from database.data_manager import PathDataManager
 from filters.extension_filter import ExtensionFilter
@@ -108,7 +109,7 @@ class FastCrawler:
         if self.invert_filters:
             should_skip = not should_skip
         if should_skip:
-            self.path_ignored(entry=path, filter=_filter, is_file=is_file, file_extension=file_extension)
+            self.path_ignored(entry=entry, filter=_filter, is_file=is_file, file_extension=file_extension)
         return file_extension, should_skip
 
     def scan(self):
@@ -255,16 +256,16 @@ class FastCrawler:
                         self.path_error(_path=path, msg=f"Error calling stat() for path '{path}'", error=error)
                         continue
             except Exception as ex:
+                print(traceback.format_exception(ex))
                 self.path_error(_path=entry.path, error=ex)
         return dir_total_size, dir_total_files_nb
 
 
-if __name__ == '__main__':
-    base_volume = '/media/sa-nas/1ca37148-c9db-4660-b617-2d797356e44b1/'
+def crawl():
+    base_volume = '/mnt/sda1/'
     paths_to_scan = {
         "Applications/": (ContentCategory.APP, ContentClassificationPegi.TWELVE_OR_MORE),
         "A trier/": (None, ContentClassificationPegi.EIGHTEEN_OR_MORE),
-
     }
 
     filters: List[IFilter] = []
@@ -349,4 +350,5 @@ if __name__ == '__main__':
     duration = process_end - process_start
     logger.success(f"Total size: {process_size} Go - Scanned {process_nb_files} files in {duration:.2f} sec")
 
-
+if __name__ == '__main__':
+    crawl()

@@ -38,8 +38,14 @@ class ExtendedAttributesFileProcessor(IPathProcessor):
 
         lstat = path.lstat()
 
+        """
+        time_t    st_atime;   /* time of last access */
+        time_t    st_mtime;   /* time of last modification */
+        time_t    st_ctime;   /* time of last status change */
+        """
         path_model.create_time = datetime.fromtimestamp(lstat.st_ctime)
         path_model.modify_time = datetime.fromtimestamp(lstat.st_mtime)
+        path_model.last_time_access = datetime.fromtimestamp(lstat.st_atime)
 
         path_model.is_windows_path = True \
             if hasattr(lstat, 'st_file_attributes') and lstat.st_file_attributes is not None \

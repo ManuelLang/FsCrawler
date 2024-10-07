@@ -59,11 +59,11 @@ CREATE TABLE IF NOT EXISTS content_classification_pegi_age
     name       varchar(25)   NOT NULL,
     PRIMARY KEY (id)
 );
-INSERT INTO content_classification_pegi_age (id, name) VALUES (1, 3);
-INSERT INTO content_classification_pegi_age (id, name) VALUES (2, 7);
-INSERT INTO content_classification_pegi_age (id, name) VALUES (3, 12);
-INSERT INTO content_classification_pegi_age (id, name) VALUES (4, 16);
-INSERT INTO content_classification_pegi_age (id, name) VALUES (5, 18);
+INSERT INTO content_classification_pegi_age (id, name) VALUES (3, 3);
+INSERT INTO content_classification_pegi_age (id, name) VALUES (7, 7);
+INSERT INTO content_classification_pegi_age (id, name) VALUES (12, 12);
+INSERT INTO content_classification_pegi_age (id, name) VALUES (16, 16);
+INSERT INTO content_classification_pegi_age (id, name) VALUES (18, 18);
 
 CREATE TABLE IF NOT EXISTS tags
 (
