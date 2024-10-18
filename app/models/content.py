@@ -35,6 +35,16 @@ class ContentCategory(Enum):
     def __str__(self):
         return self.name
 
+    @staticmethod
+    def from_name(name: str):
+        if not name:
+            raise ValueError("The name is mandatory to parse the ContentCategory")
+        name = name.strip().upper()
+        try:
+            return ContentCategory[name]
+        except Exception as ex:
+            raise ValueError(f"Can not parse name '{name}' to ContentCategory. Allowed values are: {[e.value for e in ContentCategory]}")
+
 
 class ContentClassificationPegi(Enum):
     ALL = '*'
@@ -56,6 +66,16 @@ class ContentClassificationPegi(Enum):
             return ContentClassificationPegi.SIXTEEN_OR_MORE
         else:
             return ContentClassificationPegi.EIGHTEEN_OR_MORE
+
+    @staticmethod
+    def from_name(name: str):
+        if not name:
+            raise ValueError("The name is mandatory to parse the ContentClassificationPegi")
+        name = name.strip().upper()
+        try:
+            return ContentClassificationPegi[name]
+        except Exception as ex:
+            raise ValueError(f"Can not parse name '{name}' to ContentClassificationPegi. Allowed values are: {[e.value for e in ContentClassificationPegi]}")
 
     def __str__(self):
         return self.name

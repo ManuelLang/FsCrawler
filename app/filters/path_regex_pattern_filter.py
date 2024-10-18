@@ -21,9 +21,9 @@ class RegexPatternFilter(Filter):
     def __init__(self, authorized_path_pattern: str = '', excluded_path_pattern: str = '', ignore_case: bool = True) -> None:
         """
         Filter paths based on the **regex patterns** that are defined.
-        /!\ This is NOT a Path pattern
-        :param authorized_path_pattern: the regex pattern that should be crawled, e.g. .*\.jpg$
-        :param excluded_path_pattern: the regex pattern that should be skipped, e.g. \/MyDummyFolder\/
+        /!\\ This is NOT a Path pattern
+        :param authorized_path_pattern: the regex pattern that should be crawled, e.g. .*\\.jpg$
+        :param excluded_path_pattern: the regex pattern that should be skipped, e.g. \\/MyDummyFolder\\/
         """
         super().__init__()
         self.authorized_path_pattern = None
@@ -75,9 +75,10 @@ class RegexPatternFilter(Filter):
     def to_json(self) -> dict:
         json_dict = super().to_json()
         json_dict.update({
-            "filter": self.__class__.__name__,
-            "authorized_path_pattern": self.authorized_path_pattern,
-            "excluded_path_pattern": self.excluded_path_pattern
+            self.__class__.__name__: {
+                "authorized_path_pattern": self.authorized_path_pattern,
+                "excluded_path_pattern": self.excluded_path_pattern
+            }
         })
         return json_dict
 

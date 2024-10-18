@@ -1,6 +1,6 @@
 loguru
 pytz
-textract
+# textract==1.6.1
 opencv-python
 pytesseract
 pdf2image
@@ -18,7 +18,9 @@ loguru
 more_itertools
 libmagic
 xxhash
-psycopg2
+psycopg2-binary
 urllib3
 elasticsearch
 elasticsearch-dsl
+pyyaml
+multipledispatch

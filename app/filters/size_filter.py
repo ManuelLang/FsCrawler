@@ -55,9 +55,10 @@ class SizeFilter(Filter):
     def to_json(self) -> dict:
         json_dict = super().to_json()
         json_dict.update({
-            "filter": self.__class__.__name__,
-            "min_size_in_bytes": format_file_size(self.min_size_in_bytes),
-            "max_size_in_bytes": format_file_size(self.max_size_in_bytes)
+            self.__class__.__name__: {
+                "min_size_in_bytes": format_file_size(self.min_size_in_bytes),
+                "max_size_in_bytes": format_file_size(self.max_size_in_bytes)
+            }
         })
         return json_dict
 

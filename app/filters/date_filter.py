@@ -89,9 +89,11 @@ class DateFilter(Filter):
     def to_json(self) -> dict:
         json_dict = super().to_json()
         json_dict.update({
-            "filter": self.__class__.__name__,
-            "max_depth": self.max_depth,
-            "root_dir_path": self.root_dir_path
+            self.__class__.__name__: {
+                "attribute_filter": self.attribute_filter,
+                "min_date": self.min_date,
+                "max_date": self.max_date
+            }
         })
         return json_dict
 

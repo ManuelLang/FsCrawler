@@ -16,7 +16,7 @@ class PatternFilter(Filter):
     def __init__(self, authorized_path_pattern: str = '', excluded_path_pattern: str = '') -> None:
         """
         Filter paths based on the **Path patterns** that are handled by the underlying File System.
-        /!\ This is NOT a regex pattern
+        /!\\ This is NOT a regex pattern
         :param authorized_path_pattern: the path pattern that should be crawled, e.g. *.jpg
         :param excluded_path_pattern: the path pattern that should be skipped, e.g. *.exe
         """
@@ -65,9 +65,10 @@ class PatternFilter(Filter):
     def to_json(self) -> dict:
         json_dict = super().to_json()
         json_dict.update({
-            "filter": self.__class__.__name__,
-            "authorized_path_pattern": self.authorized_path_pattern,
-            "excluded_path_pattern": self.excluded_path_pattern
+            self.__class__.__name__: {
+                "authorized_path_pattern": self.authorized_path_pattern,
+                "excluded_path_pattern": self.excluded_path_pattern
+            }
         })
         return json_dict
 

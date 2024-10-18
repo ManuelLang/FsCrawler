@@ -43,7 +43,9 @@ class Filter(IFilter):
         return self.can_process(entry)
 
     def to_json(self) -> dict:
-        return {}
+        return {
+            self.__class__.__name__: {}
+        }
 
     def __str__(self) -> str:
         return JsonDumper.dumps({

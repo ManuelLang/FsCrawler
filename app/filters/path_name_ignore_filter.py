@@ -34,8 +34,9 @@ class NameFilter(Filter):
     def to_json(self) -> dict:
         json_dict = super().to_json()
         json_dict.update({
-            "filter": self.__class__.__name__,
-            "excluded_names": self.excluded_names
+            self.__class__.__name__: {
+                "excluded_names": self.excluded_names
+            }
         })
         return json_dict
 

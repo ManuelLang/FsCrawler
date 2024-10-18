@@ -61,9 +61,10 @@ class ExtensionFilter(Filter):
     def to_json(self) -> dict:
         json_dict = super().to_json()
         json_dict.update({
-            "filter": self.__class__.__name__,
-            "authorized_extensions": self.authorized_extensions,
-            "excluded_extensions": self.excluded_extensions
+            self.__class__.__name__: {
+                "authorized_extensions": self.authorized_extensions,
+                "excluded_extensions": self.excluded_extensions
+            }
         })
         return json_dict
 

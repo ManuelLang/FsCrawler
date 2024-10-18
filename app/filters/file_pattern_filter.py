@@ -7,6 +7,7 @@ from loguru import logger
 from multipledispatch import dispatch
 
 from filters.path_pattern_filter import PatternFilter
+from helpers.serializationHelper import JsonDumper
 from interfaces.iCrawler import ICrawler
 
 
@@ -35,3 +36,13 @@ class FilePatternFilter(PatternFilter):
         else:
             authorize = super(FilePatternFilter, self).authorize(path=entry.path)  # Filter only files
         return authorize
+
+    def to_json(self) -> dict:
+        json_dict = super().to_json()
+        json_dict.update({
+            self.__class__.__name__: {
+                "authorized_path_pattern": self.authorized_path_pattern,
+                "excluded_path_pattern": self.excluded_path_pattern
+            }
+        })
+        return json_dict

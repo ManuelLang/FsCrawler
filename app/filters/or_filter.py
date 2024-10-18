@@ -32,8 +32,9 @@ class OrFilter(Filter):
     def to_json(self) -> dict:
         json_dict = super().to_json()
         json_dict.update({
-            "filter": self.__class__.__name__,
-            "filters": [JsonDumper.dumps(f) for f in self.filters]
+            self.__class__.__name__: {
+                "filters": [JsonDumper.dumps(f) for f in self.filters]
+            }
         })
         return json_dict
 
